@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pack Scanner</title>
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#10151c">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Pack Scanner">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" href="/icons/icon-192.png">
+<style>
+:root{--bg:#10151c;--panel:#1a222d;--line:#2b3644;--text:#eef2f6;--dim:#93a1b3;--tag:#ffd23f;--ink:#10151c;--ok:#4ade80;--err:#ff6b6b;box-sizing:border-box}
+*{box-sizing:inherit;margin:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;background:var(--bg);color:var(--text);font:16px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,"PingFang SC","Noto Sans SC",sans-serif}
+.view{display:none;min-height:100%;padding:calc(env(safe-area-inset-top,0px) + 20px) 18px calc(env(safe-area-inset-bottom,0px) + 20px)}
+.view.on{display:block}
+h1{font-size:28px;letter-spacing:-.5px}
+h2{font-size:15px;color:var(--dim);font-weight:600;margin:24px 0 8px}
+.sub{color:var(--dim);font-size:14px;margin-top:4px}
+label{display:block;font-size:13px;color:var(--dim);margin:12px 0 4px}
+input,select{width:100%;padding:12px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:var(--text);font-size:16px}
+.row{display:flex;gap:10px}.row>*{flex:1}
+button{font:inherit;border:0;border-radius:12px;padding:14px 16px;cursor:pointer;color:var(--text);background:var(--panel);border:1px solid var(--line)}
+button.main{background:var(--tag);color:var(--ink);font-weight:700;border-color:var(--tag);width:100%;font-size:18px;padding:16px;margin-top:20px}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--tag);outline-offset:2px}
+.item{display:flex;gap:12px;align-items:center;padding:12px;border:1px dashed var(--line);border-radius:12px;margin-bottom:8px}
+.item .ic{font-size:26px}.item b{display:block}.item small{color:var(--dim)}
+.item button{margin-left:auto;padding:6px 10px;font-size:13px}
+.cat{font-size:13px;color:var(--dim);margin:16px 0 6px;font-weight:600}
+.item{border-style:solid}.item.done{opacity:.55}.item.done b{text-decoration:line-through}
+.item .chk{margin-left:0;padding:4px 10px;font-size:18px;background:none;border-radius:99px;min-width:40px}
+.item.done .chk{background:var(--ok);color:var(--ink);border-color:var(--ok)}
+.item .rm{margin-left:auto;background:none;border:0;color:var(--dim)}
+.card .q{font-size:14px;margin-top:8px}
+.empty{color:var(--dim);font-size:14px;padding:12px 0}
+/* scanning */
+#scan{padding:0;position:relative;height:100%;overflow:hidden;background:#000}
+video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000}
+.top{position:absolute;left:0;right:0;top:0;padding:calc(env(safe-area-inset-top,0px) + 12px) 14px 30px;display:flex;gap:10px;align-items:center;background:linear-gradient(#000a,#0000)}
+.top button{padding:8px 14px;background:#0008;border-color:#fff3}
+.top .m{margin-left:auto;font-size:12px;color:#fffc;text-align:right;max-width:55%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.frame{position:absolute;left:10%;right:10%;top:20%;bottom:34%;pointer-events:none}
+.frame i{position:absolute;width:46px;height:46px;border:4px solid var(--tag);transition:border-color .2s}
+.frame .tl{top:0;left:0;border-right:0;border-bottom:0;border-top-left-radius:22px}
+.frame .tr{top:0;right:0;border-left:0;border-bottom:0;border-top-right-radius:22px}
+.frame .bl{bottom:0;left:0;border-right:0;border-top:0;border-bottom-left-radius:22px}
+.frame .br{bottom:0;right:0;border-left:0;border-top:0;border-bottom-right-radius:22px}
+.frame.busy i{border-color:#fff}
+.frame.busy{animation:p 1s infinite alternate}
+@keyframes p{to{opacity:.4}}
+@media (prefers-reduced-motion:reduce){.frame.busy{animation:none}}
+.pill{position:absolute;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top,0px) + 64px);background:#000b;padding:8px 16px;border-radius:99px;font-size:14px;white-space:nowrap;max-width:92%;overflow:hidden;text-overflow:ellipsis}
+.pill.err{color:var(--err)}
+.card{position:absolute;left:12px;right:12px;bottom:calc(env(safe-area-inset-bottom,0px) + 12px);background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:14px;min-height:96px}
+.card .big{display:flex;gap:12px;align-items:center}
+.card .ic{font-size:38px}.card .nm{font-size:20px;font-weight:700}
+.card .meta{color:var(--dim);font-size:13px}
+.card .row{margin-top:10px}
+.card button{padding:10px}
+.card .add{background:var(--tag);color:var(--ink);font-weight:700;border-color:var(--tag)}
+.dbg{font-size:11px;color:var(--dim);margin-top:8px;font-variant-numeric:tabular-nums}
+#scrim{position:fixed;inset:0;background:#0009;z-index:20;opacity:0;pointer-events:none;transition:opacity .25s}
+#drawer{position:fixed;left:0;right:0;bottom:0;width:100%;height:82%;z-index:21;background:var(--bg);border:1px solid var(--line);border-bottom:0;border-radius:20px 20px 0 0;display:flex;flex-direction:column;transform:translateY(100%);transition:transform .28s,visibility .28s;visibility:hidden}
+body.open #scrim{opacity:1;pointer-events:auto}
+body.open #drawer{transform:none;visibility:visible}
+#drawer header{display:flex;justify-content:space-between;align-items:center;padding:16px 16px 10px;font-size:18px}
+#drawer header button{padding:6px 12px}
+.dbody{flex:1;display:flex;min-height:0}
+#nav{display:flex;flex-direction:column;gap:4px;padding:4px 8px 12px 10px;overflow-y:auto;border-right:1px solid var(--line)}
+#nav button{width:46px;height:46px;padding:0;font-size:22px;border-radius:12px;background:none;border:2px solid transparent}
+#nav button.on{background:var(--panel);border-color:var(--tag)}
+#list{flex:1;overflow-y:auto;padding:0 14px 12px;position:relative}
+#drawer footer{padding:10px 14px calc(env(safe-area-inset-bottom,0px) + 12px);border-top:1px solid var(--line)}
+#drawer footer button{width:100%;font-size:14px}
+.cnt{color:var(--dim);font-size:.85em;font-variant-numeric:tabular-nums}
+@media (prefers-reduced-motion:reduce){#drawer,#scrim{transition:none}}
+#tools{position:absolute;right:12px;top:calc(env(safe-area-inset-top,0px) + 60px);width:min(320px,calc(100% - 24px));background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:6px 14px 14px;z-index:5;display:none}
+#tools.open{display:block}
+#tools{max-height:70vh;overflow-y:auto}
+#tools input[type=range]{padding:0;accent-color:var(--tag)}
+#tools label b{color:var(--text)}
+</style>
+</head>
+<body>
+
+<section id="home" class="view on">
+  <h1>🎒 Pack Scanner</h1>
+  <p class="sub">Point the camera at a luggage item. Models are called through Vercel AI Gateway.</p>
+
+  <label for="model">Model</label>
+  <select id="model">
+    <option value="alibaba/qwen3.8-27b">alibaba/qwen3.8-27b</option>
+    <option value="zai/glm-5.3-flash">zai/glm-5.3-flash</option>
+    <option value="deepseek/deepseek-v4.1-flash">deepseek/deepseek-v4.1-flash</option>
+    <option value="google/gemini-2.5-flash-lite">google/gemini-2.5-flash-lite</option>
+    <option value="__custom">Custom…</option>
+  </select>
+  <input id="custom" placeholder="creator/model (see vercel.com/ai-gateway/models)" style="display:none;margin-top:8px">
+
+  <div class="row">
+    <div><label for="thr">Change threshold (1–60)</label><input id="thr" type="number" min="1" max="60" value="30"></div>
+    <div><label for="wid">Image width (px)</label><input id="wid" type="number" min="256" max="1280" step="64" value="640"></div>
+  </div>
+
+  <button class="main" id="start">📷 Start scan</button>
+
+  <button id="openList" style="width:100%;margin-top:12px">📋 Packing list <span class="cnt"></span></button>
+</section>
+
+<section id="scan" class="view">
+  <video id="vid" playsinline muted autoplay></video>
+  <div class="top"><button id="stop">✕ Stop</button><button id="openList2" aria-label="Packing list">📋 <span class="cnt"></span></button><span class="m" id="mlabel"></span><button id="tbtn" aria-label="Test settings" aria-expanded="false">⚙️</button></div>
+  <div id="tools">
+    <label for="model2">Model</label><select id="model2"></select>
+    <input id="custom2" placeholder="creator/model" style="display:none;margin-top:8px">
+    <label for="thr2">Change threshold: <b id="thrv"></b></label><input id="thr2" type="range" min="1" max="60">
+    <label for="cam">Camera</label><select id="cam"></select>
+    <div id="zoomrow" style="display:none"><label for="zoom">Zoom: <b id="zv"></b>×</label><input id="zoom" type="range"></div>
+    <div class="dbg" id="info"></div>
+    <label for="fit">View</label><select id="fit"><option value="contain">Fit (full frame)</option><option value="cover">Fill (crops edges)</option></select>
+    <label for="wid2">Image width: <b id="widv"></b> px</label><input id="wid2" type="range" min="256" max="1280" step="64">
+  </div>
+  <div class="frame" id="frame"><i class="tl"></i><i class="tr"></i><i class="bl"></i><i class="br"></i></div>
+  <div class="pill" id="pill">Fit the entire item in the frame.</div>
+  <div class="card" id="card"><div class="meta">Waiting for an item…</div><div class="dbg" id="dbg"></div></div>
+</section>
+
+<div id="scrim"></div>
+<aside id="drawer" role="dialog" aria-label="Packing list" aria-hidden="true">
+  <header><b>📋 Packing list <span class="cnt"></span></b><button id="closeList" aria-label="Close">✕</button></header>
+  <div class="dbody"><nav id="nav" aria-label="Categories"></nav><div id="list"></div></div>
+  <footer><button id="reset">Reset list to default</button></footer>
+</aside>
+
+<canvas id="cv" hidden></canvas>
+<canvas id="sm" width="32" height="24" hidden></canvas>
+
+<script>
+const CATS={
+  "Documents & Money":["📄","证件与金钱"],"Clothing":["👕","衣物"],"Footwear":["👟","鞋类"],
+  "Toiletries":["🧴","洗漱用品"],"Medicine & First Aid":["💊","药品与急救"],"Electronics":["🔌","电子产品"],
+  "Sleeping Gear":["🛏️","住宿与睡眠"],"Food & Drink":["🍽️","饮食用品"],"Security":["🔒","安全防护"],
+  "Outdoor & Navigation":["🧭","户外与导航"],"Bags & Organization":["🎒","包类与收纳"],"Misc & Entertainment":["📚","娱乐与杂物"]
+};
+const INTERVAL=2000;
+const $=id=>document.getElementById(id);
+const store={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+
+// ---- settings ----
+const REMOVED=["openai/gpt-6-luna","xiaomi/mimo-v2.6-flash"];
+let savedModel=store.get("model","google/gemini-2.5-flash-lite");
+if(REMOVED.includes(savedModel))savedModel="google/gemini-2.5-flash-lite";
+if([...$("model").options].some(o=>o.value===savedModel))$("model").value=savedModel;
+else{$("model").value="__custom";$("custom").style.display="block";$("custom").value=savedModel}
+$("thr").value=store.get("thr",30);$("wid").value=store.get("wid",640);
+$("model").onchange=()=>{$("custom").style.display=$("model").value==="__custom"?"block":"none"};
+const getModel=()=>$("model").value==="__custom"?$("custom").value.trim():$("model").value;
+
+// ---- scan-page toolbar (synced with the home settings) ----
+$("model2").innerHTML=$("model").innerHTML;
+function toScan(){
+  $("model2").value=$("model").value;$("custom2").value=$("custom").value;
+  $("custom2").style.display=$("model2").value==="__custom"?"block":"none";
+  $("thr2").value=$("thr").value;$("wid2").value=$("wid").value;
+  $("thrv").textContent=$("thr2").value;$("widv").textContent=$("wid2").value;$("mlabel").textContent=getModel();
+}
+function fromScan(){
+  $("model").value=$("model2").value;$("custom").value=$("custom2").value;
+  $("custom").style.display=$("custom2").style.display=$("model").value==="__custom"?"block":"none";
+  $("thr").value=$("thr2").value;$("wid").value=$("wid2").value;
+  $("thrv").textContent=$("thr2").value;$("widv").textContent=$("wid2").value;$("mlabel").textContent=getModel();
+  store.set("model",getModel());store.set("thr",+$("thr").value||30);store.set("wid",+$("wid").value||640);
+}
+["input","change"].forEach(ev=>["model2","custom2","thr2","wid2"].forEach(id=>$(id).addEventListener(ev,fromScan)));
+$("tbtn").onclick=()=>{const o=!$("tools").classList.contains("open");$("tools").classList.toggle("open",o);$("tbtn").setAttribute("aria-expanded",String(o));if(o)toScan()};
+
+// ---- packing list ----
+const DEFAULT_LIST=`Documents & Money|Passport|护照;Documents & Money|ID card|身份证;Documents & Money|Cash|现金;Documents & Money|Bank card|银行卡;Clothing|Shell jacket|冲锋衣;Clothing|Quick-dry shirt|速干衣;Clothing|Wool long-sleeve|羊毛长袖;Clothing|Down jacket|羽绒服;Clothing|Shell pants|冲锋裤;Clothing|Thermal pants|保暖裤;Clothing|Fleece liner|抓绒内胆;Clothing|Raincoat|雨衣;Clothing|Baseball cap|鸭舌帽;Clothing|Beanie|毛线帽;Clothing|Neck gaiter|头巾;Clothing|Gloves|手套;Clothing|Wool socks|羊毛袜;Clothing|Sport sunglasses|运动墨镜;Footwear|Hiking boots|登山鞋;Footwear|Slippers|拖鞋;Toiletries|Toiletry bag|洗漱包;Toiletries|Toothbrush|牙刷;Toiletries|Toothpaste|牙膏;Toiletries|Disposable bath towel|一次性浴巾;Toiletries|Compressed towel|压缩毛巾;Toiletries|Wet wipes|湿巾;Toiletries|Tissues|纸巾;Toiletries|Sunscreen|防晒霜;Toiletries|Hand cream|护手霜;Medicine & First Aid|Medicine kit|药包;Medicine & First Aid|Band-aids|创可贴;Medicine & First Aid|Insect repellent|驱蚊液;Electronics|Phone|手机;Electronics|Camera|相机;Electronics|Tripod|三脚架;Electronics|Power bank|充电宝;Electronics|Charger|充电器;Electronics|Data cable|数据线;Electronics|Batteries|电池;Electronics|Earphones|耳机;Electronics|Walkie-talkie|对讲机;Sleeping Gear|Sleeping bag|睡袋;Sleeping Gear|Sleeping pad|防潮垫;Sleeping Gear|Inflatable pillow|充气枕;Sleeping Gear|Eye mask|眼罩;Sleeping Gear|Earplugs|耳塞;Food & Drink|Food|食物;Food & Drink|Thermos cup|保温杯;Food & Drink|Utensils|餐具;Food & Drink|Cookware|锅具;Security|Padlock|行李锁;Security|Money belt|防盗腰包;Security|Backpack rain cover|背包防雨罩;Outdoor & Navigation|Trekking poles|登山杖;Outdoor & Navigation|Headlamp|头灯;Outdoor & Navigation|Map|地图;Outdoor & Navigation|Compass|指南针;Bags & Organization|Backpack|背包;Bags & Organization|Crossbody bag|斜跨小包;Bags & Organization|Dry bag|防水袋;Misc & Entertainment|Book|书;Misc & Entertainment|Trash bags|垃圾袋`.split(";").map(r=>{const[c,e,z]=r.split("|");return{cat:c,en:e,zh:z,done:false}});
+let list=store.get("list3",null)||DEFAULT_LIST.map(x=>({...x}));
+const save=()=>store.set("list3",list);
+function renderList(){
+  const L=$("list"),top=L.scrollTop,n=list.filter(i=>i.done).length;
+  document.querySelectorAll(".cnt").forEach(e=>e.textContent=`${n}/${list.length}`);
+  const cats=Object.keys(CATS).filter(c=>list.some(i=>i.cat===c));
+  $("nav").innerHTML=cats.map(c=>`<button data-c="${esc(c)}" title="${esc(c)}" aria-label="${esc(c)}">${CATS[c][0]}</button>`).join("");
+  L.innerHTML=cats.map(c=>`<section data-c="${esc(c)}"><div class="cat">${CATS[c][0]} ${esc(c)}</div>`+list.map((it,i)=>it.cat!==c?"":`<div class="item${it.done?" done":""}"><button class="chk" data-t="${i}" aria-label="Toggle packed">${it.done?"✓":"○"}</button><div><b>${esc(it.en)}</b></div><button class="rm" data-r="${i}" aria-label="Remove">✕</button></div>`).join("")+`</section>`).join("");
+  L.scrollTop=top;spy();
+}
+function spy(){
+  const L=$("list"),secs=[...L.querySelectorAll("section")];if(!secs.length)return;
+  let cur=secs[0];secs.forEach(x=>{if(x.offsetTop<=L.scrollTop+20)cur=x});
+  if(L.scrollTop+L.clientHeight>=L.scrollHeight-2)cur=secs[secs.length-1];
+  $("nav").querySelectorAll("button").forEach(b=>b.classList.toggle("on",b.dataset.c===cur.dataset.c));
+}
+$("list").addEventListener("scroll",spy,{passive:true});
+$("nav").onclick=e=>{
+  const b=e.target.closest("button");if(!b)return;
+  const x=[...$("list").querySelectorAll("section")].find(y=>y.dataset.c===b.dataset.c);
+  if(x)$("list").scrollTo({top:x.offsetTop,behavior:"smooth"});
+};
+const setOpen=o=>{document.body.classList.toggle("open",o);$("drawer").setAttribute("aria-hidden",String(!o));if(o)spy()};
+$("openList").onclick=$("openList2").onclick=()=>setOpen(true);
+$("closeList").onclick=$("scrim").onclick=()=>setOpen(false);
+addEventListener("keydown",e=>{if(e.key==="Escape")setOpen(false)});
+$("list").onclick=e=>{
+  const t=e.target.closest("button");if(!t)return;
+  if(t.dataset.t!=null)list[+t.dataset.t].done=!list[+t.dataset.t].done;
+  else if(t.dataset.r!=null)list.splice(+t.dataset.r,1);
+  else return;
+  save();renderList();
+};
+$("reset").onclick=()=>{if(confirm("Reset the packing list to the default list?")){list=DEFAULT_LIST.map(x=>({...x}));save();renderList()}};
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const findIdx=r=>{const k=n=>String(n||"").trim().toLowerCase();return list.findIndex(i=>k(i.en)===k(r.match)||k(i.en)===k(r.item))};
+renderList();
+
+// ---- scanning ----
+let stream=null,timer=null,prev=null,busy=false,ctrl=null,running=false,reqId=0;
+const vid=$("vid"),cv=$("cv"),sm=$("sm"),smx=sm.getContext("2d",{willReadFrequently:true});
+$("fit").value=store.get("fit","contain");vid.style.objectFit=$("fit").value;
+$("fit").onchange=()=>{store.set("fit",$("fit").value);vid.style.objectFit=$("fit").value};
+
+function show(v){document.querySelectorAll(".view").forEach(s=>s.classList.toggle("on",s.id===v))}
+function pill(t,err){const p=$("pill");p.textContent=t;p.className="pill"+(err?" err":"")}
+
+$("start").onclick=async()=>{
+  const model=getModel();
+  if(!model){alert("Choose or enter a model.");return}
+  store.set("model",model);store.set("thr",+$("thr").value||30);store.set("wid",+$("wid").value||640);
+  show("scan");$("mlabel").textContent=model;prev=null;
+  $("card").innerHTML='<div class="meta">Waiting for an item…</div><div class="dbg" id="dbg"></div>';
+  pill("Starting camera…");
+  try{
+    await openStream();
+  }catch(e){pill("Camera unavailable: "+(e.message||e.name)+". Use HTTPS and allow camera access.",true);return}
+  running=true;pill("Fit the entire item in the frame.");
+  tick();timer=setInterval(tick,INTERVAL);
+};
+let track=null;
+async function openStream(deviceId){
+  if(stream)stream.getTracks().forEach(t=>t.stop());
+  const v={width:{ideal:1280},aspectRatio:{ideal:4/3}};
+  if(deviceId)v.deviceId={exact:deviceId};else v.facingMode={ideal:"environment"};
+  stream=await navigator.mediaDevices.getUserMedia({video:v,audio:false});
+  vid.srcObject=stream;await vid.play();prev=null;
+  track=stream.getVideoTracks()[0];
+  const devs=(await navigator.mediaDevices.enumerateDevices()).filter(d=>d.kind==="videoinput");
+  $("cam").innerHTML=devs.map((d,i)=>`<option value="${esc(d.deviceId)}">${esc(d.label||"Camera "+(i+1))}</option>`).join("");
+  $("cam").value=track.getSettings().deviceId||"";
+  const cap=track.getCapabilities?track.getCapabilities():{},z=$("zoom");
+  $("zoomrow").style.display=cap.zoom?"block":"none";
+  if(cap.zoom){z.min=cap.zoom.min;z.max=cap.zoom.max;z.step=cap.zoom.step||.1;z.value=track.getSettings().zoom||cap.zoom.min;$("zv").textContent=(+z.value).toFixed(1)}
+  $("info").textContent=`Stream ${vid.videoWidth}×${vid.videoHeight} · ${devs.length} camera(s) · `+(cap.zoom?`zoom ${cap.zoom.min}–${cap.zoom.max}×`:"no zoom control");
+}
+$("cam").onchange=()=>openStream($("cam").value).catch(e=>pill("Camera error: "+e.message,true));
+$("zoom").oninput=()=>{const v=+$("zoom").value;$("zv").textContent=v.toFixed(1);track&&track.applyConstraints({advanced:[{zoom:v}]}).catch(()=>{})};
+$("stop").onclick=stopScan;
+function stopScan(){
+  running=false;$("tools").classList.remove("open");clearInterval(timer);if(ctrl)ctrl.abort();reqId++;busy=false;
+  if(stream)stream.getTracks().forEach(t=>t.stop());stream=null;vid.srcObject=null;
+  $("frame").classList.remove("busy");show("home");renderList();
+}
+
+// mean absolute difference of 32x24 grayscale thumbnails
+function thumb(){
+  smx.drawImage(vid,0,0,32,24);
+  const d=smx.getImageData(0,0,32,24).data,g=new Float32Array(768);
+  for(let i=0;i<768;i++)g[i]=.299*d[i*4]+.587*d[i*4+1]+.114*d[i*4+2];
+  return g;
+}
+function diff(a,b){let s=0;for(let i=0;i<768;i++)s+=Math.abs(a[i]-b[i]);return s/768}
+function capture(){
+  const w=Math.min(+$("wid").value||640,vid.videoWidth),h=Math.round(w*vid.videoHeight/vid.videoWidth);
+  cv.width=w;cv.height=h;cv.getContext("2d").drawImage(vid,0,0,w,h);
+  return cv.toDataURL("image/jpeg",.6);
+}
+function dbg(t){const e=$("dbg");if(e)e.textContent=t}
+
+async function tick(){
+  if(!running||!vid.videoWidth)return;
+  const cur=thumb();
+  const d=prev?diff(cur,prev):999;
+  prev=cur; // previous frame kept for next comparison
+  const thr=+$("thr").value||30;
+  if(busy){dbg(`diff ${d>900?"–":d.toFixed(1)} · busy`);return}
+  if(d<thr){dbg(`diff ${d.toFixed(1)} < ${thr} · skipped`);return}
+  if(!getModel()){pill("Enter a model ID in ⚙️.",true);return}
+  const img=capture();
+  dbg(`diff ${d>900?"first":d.toFixed(1)} · sent ${Math.round(img.length*.75/1024)} KB`);
+  analyze(img);
+}
+
+async function analyze(img){
+  if(busy)return; // never send a new request while one is still pending
+  busy=true;const my=++reqId;$("frame").classList.add("busy");pill("Recognizing…");
+  const t0=performance.now();ctrl=new AbortController();
+  let timedOut=false;const to=setTimeout(()=>{timedOut=true;ctrl.abort()},30000);
+  try{
+    const r=await fetch("/api/analyze",{
+      method:"POST",signal:ctrl.signal,
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({model:getModel(),image:img,list:list.map(i=>i.en)})
+    });
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok)throw new Error(j.error||("HTTP "+r.status));
+    const txt=j.text||"";
+    const m=txt.match(/\{[\s\S]*\}/);if(!m)throw new Error("Unreadable reply");
+    const res=JSON.parse(m[0]),ms=Math.round(performance.now()-t0);
+    if(!running||my!==reqId)return;
+    if(!res.item){pill("Couldn't recognize the item. Fit the entire item in the frame.",true);dbg2(ms)}
+    else{showResult(res,ms,findIdx(res))}
+  }catch(e){
+    if(e.name==="AbortError"){if(timedOut&&running&&my===reqId)pill("Request timed out. Try again.",true);return}
+    if(my===reqId)pill("Error: "+e.message,true);
+  }finally{
+    clearTimeout(to);
+    if(my===reqId){busy=false;if(running)$("frame").classList.remove("busy")}
+  }
+}
+function dbg2(ms){const e=$("dbg");if(e)e.textContent+=` · ${ms} ms`}
+
+const WAIT='<div class="meta">Waiting for an item…</div><div class="dbg" id="dbg"></div>';
+function showResult(r,ms,idx){
+  const conf=typeof r.confidence==="number"?Math.round(r.confidence*100)+"%":"–";
+  const inList=idx>=0,it=inList?list[idx]:null;
+  const cat=inList?it.cat:(CATS[r.category]?r.category:"Misc & Entertainment"),ic=CATS[cat][0];
+  const en=inList?it.en:r.item,zh=inList?it.zh:(r.item_zh||"");
+  pill((inList?"Matched: ":"Detected: ")+en);
+  $("card").innerHTML=`<div class="big"><span class="ic">${ic}</span><div><div class="nm">${esc(en)}</div><div class="meta">${esc(cat)} · ${conf} · ${ms} ms</div></div></div>`
+  +(inList?"":'<div class="q">Item not in your list. Add it?</div>')
+  +`<div class="row"><button class="add" id="act" ${inList&&it.done?"disabled":""}>${inList?(it.done?"Already packed ✓":"Mark packed"):"Add & mark packed"}</button><button id="skip">Dismiss</button></div><div class="dbg" id="dbg"></div>`;
+  $("act").onclick=()=>{
+    if(inList)list[idx].done=true;else list.push({cat,en,zh,done:true});
+    save();renderList();
+    const msg=(inList?"Packed ✓ ":"Added & packed ✓ ")+en;
+    $("card").innerHTML=WAIT;pill(msg);
+    setTimeout(()=>{if($("pill").textContent===msg)pill("Fit the entire item in the frame.")},1500);
+  };
+  $("skip").onclick=()=>{$("card").innerHTML=WAIT;pill("Fit the entire item in the frame.")};
+}
+document.addEventListener("visibilitychange",()=>{if(document.hidden&&running)stopScan()});
+if("serviceWorker" in navigator&&location.protocol==="https:")addEventListener("load",()=>navigator.serviceWorker.register("/sw.js").catch(()=>{}));
+</script>
+</body>
+</html>
