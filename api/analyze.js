@@ -4,7 +4,7 @@ const buildPrompt = (list) => `You identify one travel/luggage item in a photo f
 The user's packing list (English names):
 ${list.length ? list.map((n) => "- " + n).join("\n") : "(empty)"}
 
-Rules:
+Rules: 
 1. Name the physical object itself that is the main subject of the photo, never its accessory or container. If an item is shown (or held) together with its case, cover, box, bag or packaging, name the item itself. Examples: wireless earbuds -> "Wireless earbuds", never "Earbud case"; a phone -> "Phone", never "Phone case"; a camera -> "Camera", never "Camera bag". Name a case, cover, box or bag only when that is the only thing in the photo.
 2. Ignore hands, people, tables and backgrounds.
 3. Prefer the list: if the item reasonably matches one list entry, set "match" to that entry copied exactly. If nothing on the list fits, set "match" to null and give the item's own name in "item".
