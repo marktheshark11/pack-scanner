@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Camera, ChevronRight, MoreHorizontal } from "lucide-react";
+import { Camera, CalendarDays, ChevronRight, MoreHorizontal } from "lucide-react";
 import Scanner from "./Scanner.jsx";
 import SettingsPanel from "./SettingsPanel.jsx";
 import { ItemIcon, resolveItemIcon } from "./ItemIcon.jsx";
@@ -334,7 +334,7 @@ function TripForm({ onSave }) {
   }
   return <form className="form-page" onSubmit={submit}>
     <label className="field-label">Destination<input value={destination} onChange={(event) => setDestination(event.target.value)} placeholder="e.g. Spain" /></label>
-    <div className="date-fields"><label className="field-label">Start date<input type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} /></label><label className="field-label">End date<input type="date" value={endDate} min={startDate || undefined} onChange={(event) => setEndDate(event.target.value)} /></label></div>
+    <div className="date-fields"><DateField label="Start date" value={startDate} onChange={setStartDate} /><DateField label="End date" value={endDate} min={startDate || undefined} onChange={setEndDate} /></div>
     {error && <p className="form-error" role="alert">{error}</p>}
     <button className="button button-primary form-submit" type="submit">Save trip <span>→</span></button>
   </form>;
@@ -356,6 +356,19 @@ function PackingForm({ trip, onSave }) {
     {error && <p className="form-error" role="alert">{error}</p>}
     <button className="button button-primary form-submit" type="submit">Save packing <span>→</span></button>
   </form>;
+}
+
+function DateField({ label, value, min, onChange, className = "field-label" }) {
+  const displayValue = value
+    ? new Date(`${value}T12:00:00`).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })
+    : "YYYY-MM-DD";
+  return <label className={className}>{label}
+    <span className="date-input-wrap">
+      <span className={`date-input-display ${value ? "has-value" : ""}`}>{displayValue}</span>
+      <CalendarDays className="date-input-icon" size={16} strokeWidth={1.8} aria-hidden="true" />
+      <input type="date" aria-label={label} value={value} min={min} onChange={(event) => onChange(event.target.value)} />
+    </span>
+  </label>;
 }
 
 function TripEditDialog({ trip, onSave, onDelete, onClose }) {
@@ -381,8 +394,8 @@ function TripEditDialog({ trip, onSave, onDelete, onClose }) {
     <form className="item-dialog trip-edit-dialog" role="dialog" aria-modal="true" aria-labelledby="trip-edit-title" onSubmit={submit}>
       <header className="dialog-header"><button type="button" className="dialog-close" aria-label="Close dialog" onClick={onClose}>×</button><h2 id="trip-edit-title">Edit trip</h2><span /></header>
       <label className="dialog-field">Destination<input required value={destination} onChange={(event) => setDestination(event.target.value)} /></label>
-      <label className="dialog-field">Start date<input type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} /></label>
-      <label className="dialog-field">End date<input type="date" min={startDate || undefined} value={endDate} onChange={(event) => setEndDate(event.target.value)} /></label>
+      <DateField className="dialog-field" label="Start date" value={startDate} onChange={setStartDate} />
+      <DateField className="dialog-field" label="End date" value={endDate} min={startDate || undefined} onChange={setEndDate} />
       {error && <p className="form-error" role="alert">{error}</p>}
       <button type="submit" className="button button-primary dialog-save">Save changes</button>
       <button type="button" className="dialog-remove" onClick={onDelete}><span aria-hidden="true">♲</span> Delete trip</button>
