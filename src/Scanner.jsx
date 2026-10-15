@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CATEGORIES } from "./constants.js";
 import SettingsPanel from "./SettingsPanel.jsx";
+import { ItemIcon, resolveItemIcon } from "./ItemIcon.jsx";
 
 const INTERVAL = 2000;
 
@@ -48,7 +49,7 @@ export default function Scanner({ packing, model, settings, threshold = 30, imag
   const [torchAvailable, setTorchAvailable] = useState(false);
   const [busy, setBusy] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-  const [scanMode, setScanMode] = useState(() => localStorage.getItem("pack-scanner-scan-mode") === "manual" ? "manual" : "automatic");
+  const [scanMode, setScanMode] = useState(() => localStorage.getItem("pack-scanner-scan-mode") === "automatic" ? "automatic" : "manual");
   const scanModeRef = useRef(scanMode);
 
   useEffect(() => {
@@ -169,7 +170,7 @@ export default function Scanner({ packing, model, settings, threshold = 30, imag
         const matchingItems = packingRef.current.items.filter((item) => item.name.toLowerCase() === name.toLowerCase());
         const existingItem = matchingItems.find((item) => item.packed) || matchingItems[0];
         const category = CATEGORIES.includes(parsed.category) ? parsed.category : "Misc & Entertainment";
-        const item = { name, category, icon: category === "Clothing" ? "♧" : category === "Electronics" ? "⌁" : "＋" };
+        const item = { name, category, iconKey: resolveItemIcon(name, category) };
         setResult({ item, existingItem, confidence: typeof parsed.confidence === "number" ? parsed.confidence : null });
         setStatus(existingItem ? "This item is already in the packing" : "Item detected");
       } catch (cause) {
@@ -252,7 +253,7 @@ export default function Scanner({ packing, model, settings, threshold = 30, imag
         </header>
 
         <div className="scanner-content">
-          <div className={`scan-frame ${busy ? "scan-frame-busy" : ""}`}><i /><i /><i /><i /><div className="scan-target">{result?.item.icon || "＋"}</div></div>
+          <div className={`scan-frame ${busy ? "scan-frame-busy" : ""}`}><i /><i /><i /><i /><div className="scan-target">{result ? <ItemIcon name={result.item.name} category={result.item.category} iconKey={result.item.iconKey} size={76} strokeWidth={1.5} /> : "＋"}</div></div>
           <p className="scanner-status">{status}</p>
         </div>
 

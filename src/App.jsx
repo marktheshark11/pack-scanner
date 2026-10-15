@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Scanner from "./Scanner.jsx";
 import SettingsPanel from "./SettingsPanel.jsx";
+import { ItemIcon, resolveItemIcon } from "./ItemIcon.jsx";
 import { MODELS, PACKING_ICONS } from "./constants.js";
 
 const STORE_KEY = "pack-scanner-trips-v1";
@@ -89,7 +90,7 @@ function App() {
       ...trip,
       packings: trip.packings.map((packing) => packing.id !== packingId ? packing : {
         ...packing,
-        items: [...packing.items, { id: makeId(), name: item.name, category: item.category || "Misc & Entertainment", icon: item.icon || "＋", packed: true }],
+        items: [...packing.items, { id: makeId(), name: item.name, category: item.category || "Misc & Entertainment", iconKey: item.iconKey || resolveItemIcon(item.name, item.category), packed: true }],
       }),
     }));
     setToast(`${item.name} added`);
@@ -131,7 +132,7 @@ function App() {
       ...trip,
       packings: trip.packings.map((packing) => packing.id !== packingId ? packing : {
         ...packing,
-        items: [...packing.items, { id: makeId(), name: cleanName, category: "Misc & Entertainment", icon: "👕", packed: false }],
+        items: [...packing.items, { id: makeId(), name: cleanName, category: "Misc & Entertainment", iconKey: resolveItemIcon(cleanName), packed: false }],
       }),
     }));
     setToast(`${cleanName} added`);
@@ -233,7 +234,7 @@ function App() {
                   <div className="item-tools"><b>Items</b><button className="text-button" onClick={() => openAddDialog(packing.id)}>＋ Add</button></div>
                   <label className="search-box"><span>⌕</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search items…" /></label>
                   {visibleItems.length === 0 ? <p className="empty-items">{packing.items.length ? "No matching items." : "No items yet. Add one or scan an item."}</p> : <div className="items-list">{visibleItems.map((item) => <div className="item-row" key={item.id}>
-                    <button className={`check-box ${item.packed ? "checked" : ""}`} aria-label={item.packed ? `Unpack ${item.name}` : `Mark ${item.name} packed`} onClick={() => toggleItem(packing.id, item.id)}>{item.packed ? "✓" : ""}</button><span className="item-icon">{item.icon}</span><span className={`item-name ${item.packed ? "item-packed" : ""}`}>{item.name}</span><button className="item-remove" aria-label={`Edit ${item.name}`} onClick={() => openEditDialog(packing.id, item)}>···</button>
+                    <button className={`check-box ${item.packed ? "checked" : ""}`} aria-label={item.packed ? `Unpack ${item.name}` : `Mark ${item.name} packed`} onClick={() => toggleItem(packing.id, item.id)}>{item.packed ? "✓" : ""}</button><span className="item-icon"><ItemIcon name={item.name} category={item.category} iconKey={item.iconKey} size={17} /></span><span className={`item-name ${item.packed ? "item-packed" : ""}`}>{item.name}</span><button className="item-remove" aria-label={`Edit ${item.name}`} onClick={() => openEditDialog(packing.id, item)}>···</button>
                   </div>)}</div>}
                   <button className="button button-primary scan-button" onClick={() => setPage({ name: "scan", tripId: activeTrip.id, packingId: packing.id })}>◎ &nbsp; Scan item</button>
                   <button className="button button-outline add-item-button" onClick={() => openAddDialog(packing.id)}>＋ &nbsp; Add item</button>
@@ -299,12 +300,12 @@ function ItemDialog({ mode, item, packing, name, onNameChange, onSave, onToggleP
   }, [onClose]);
 
   const editing = mode === "edit";
-  const visualIcon = item?.icon && item.icon !== "＋" ? item.icon : "👕";
+  const iconKey = item?.iconKey || resolveItemIcon(item?.name);
   return <div className="dialog-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
     <form className="item-dialog" role="dialog" aria-modal="true" aria-labelledby="item-dialog-title" onSubmit={(event) => { event.preventDefault(); onSave(); }}>
       <header className="dialog-header"><button type="button" className="dialog-close" aria-label="Close dialog" onClick={onClose}>×</button><h2 id="item-dialog-title">{editing ? "Edit item" : "Add item"}</h2><span /></header>
       <p className="dialog-packing-name">{packing?.name || "Packing"}</p>
-      <div className="dialog-item-art" aria-hidden="true">{visualIcon}</div>
+      <div className="dialog-item-art"><ItemIcon name={item?.name} category={item?.category} iconKey={iconKey} size={62} strokeWidth={1.7} /></div>
       <label className="dialog-field">Item name<input autoFocus required value={name} onChange={(event) => onNameChange(event.target.value)} placeholder="Name" /></label>
       <button type="submit" className="button button-primary dialog-save">Save</button>
       {editing && <>
