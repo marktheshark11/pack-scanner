@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Camera } from "lucide-react";
+import { Camera, MoreHorizontal } from "lucide-react";
 import Scanner from "./Scanner.jsx";
 import SettingsPanel from "./SettingsPanel.jsx";
 import { ItemIcon, resolveItemIcon } from "./ItemIcon.jsx";
@@ -50,6 +50,10 @@ function App() {
   const [query, setQuery] = useState("");
   const [itemDialog, setItemDialog] = useState(null);
   const [dialogName, setDialogName] = useState("");
+  const [packingDialog, setPackingDialog] = useState(null);
+  const [packingName, setPackingName] = useState("");
+  const [packingIcon, setPackingIcon] = useState(PACKING_ICONS[0]);
+  const [deleteTarget, setDeleteTarget] = useState(null);
 
   useEffect(() => {
     localStorage.setItem(STORE_KEY, JSON.stringify(trips));
@@ -65,7 +69,6 @@ function App() {
     const timer = setTimeout(() => setToast(""), 2200);
     return () => clearTimeout(timer);
   }, [toast]);
-
   const activeTrip = trips.find((trip) => trip.id === page.tripId);
   const activePacking = activeTrip?.packings.find((packing) => packing.id === page.packingId);
 
@@ -84,6 +87,33 @@ function App() {
     updateTrip(page.tripId, (trip) => ({ ...trip, packings: [...trip.packings, packing] }));
     setExpanded(packing.id);
     setPage({ name: "trip", tripId: page.tripId });
+  }
+
+  function editPacking(packing) {
+    setPackingName(packing.name);
+    setPackingIcon(packing.icon);
+    setPackingDialog(packing.id);
+  }
+
+  function savePackingEdit(event) {
+    event.preventDefault();
+    const name = packingName.trim();
+    if (!name || !packingDialog) return;
+    updateTrip(page.tripId, (trip) => ({
+      ...trip,
+      packings: trip.packings.map((packing) => packing.id === packingDialog ? { ...packing, name, icon: packingIcon } : packing),
+    }));
+    setPackingDialog(null);
+    setToast(`${name} updated`);
+  }
+
+  function confirmDeletePacking() {
+    if (!deleteTarget) return;
+    const id = deleteTarget.id;
+    updateTrip(page.tripId, (trip) => ({ ...trip, packings: trip.packings.filter((packing) => packing.id !== id) }));
+    if (expanded === id) setExpanded(null);
+    setDeleteTarget(null);
+    setToast(`${deleteTarget.name} deleted`);
   }
 
   function addItem(packingId, item) {
@@ -231,6 +261,7 @@ function App() {
                     <button className="packing-card-toggle" onClick={() => { setExpanded(isExpanded ? null : packing.id); setQuery(""); }} aria-expanded={isExpanded}>
                       <span className="packing-card-main-row"><span className="packing-icon">{packing.icon}</span><span className="packing-summary"><b>{packing.name}</b><small>{done} / {packing.items.length} packed</small></span></span>
                     </button>
+                    <button className="packing-edit-button" aria-label={`Edit ${packing.name}`} onClick={() => editPacking(packing)}><MoreHorizontal size={18} /></button>
                     <button className="packing-scan-shortcut" aria-label={`Scan and add an item to ${packing.name}`} onClick={() => setPage({ name: "scan", tripId: activeTrip.id, packingId: packing.id })}><Camera size={15} strokeWidth={1.8} /><span>Pack</span></button>
                   </div>
                   <span className="progress-track"><span style={{ width: `${packing.items.length ? done / packing.items.length * 100 : 0}%` }} /></span>
@@ -251,6 +282,8 @@ function App() {
       )}
 
       {page.name === "new-packing" && activeTrip && <PackingForm trip={activeTrip} onSave={createPacking} />}
+      {packingDialog && activeTrip && <PackingEditDialog name={packingName} icon={packingIcon} onNameChange={setPackingName} onIconChange={setPackingIcon} onSave={savePackingEdit} onDelete={() => { const packing = activeTrip.packings.find((entry) => entry.id === packingDialog); setPackingDialog(null); if (packing) setDeleteTarget(packing); }} onClose={() => setPackingDialog(null)} />}
+      {deleteTarget && <PackingDeleteDialog packing={deleteTarget} tripName={activeTrip?.destination} onConfirm={confirmDeletePacking} onClose={() => setDeleteTarget(null)} />}
       {itemDialog && activeTrip && <ItemDialog mode={itemDialog.mode} item={activeTrip.packings.find((packing) => packing.id === itemDialog.packingId)?.items.find((item) => item.id === itemDialog.itemId)} packing={activeTrip.packings.find((packing) => packing.id === itemDialog.packingId)} name={dialogName} onNameChange={setDialogName} onSave={saveItemDialog} onTogglePacked={toggleItemFromDialog} onRemove={removeItemFromDialog} onClose={() => setItemDialog(null)} />}
       {toast && <div className="toast" role="status">✓ &nbsp;{toast}</div>}
     </main>
@@ -294,6 +327,40 @@ function PackingForm({ trip, onSave }) {
     {error && <p className="form-error" role="alert">{error}</p>}
     <button className="button button-primary form-submit" type="submit">Save packing <span>→</span></button>
   </form>;
+}
+
+function PackingEditDialog({ name, icon, onNameChange, onIconChange, onSave, onDelete, onClose }) {
+  useEffect(() => {
+    const onKeyDown = (event) => { if (event.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [onClose]);
+
+  return <div className="dialog-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+    <form className="item-dialog packing-edit-dialog" role="dialog" aria-modal="true" aria-labelledby="packing-edit-title" onSubmit={onSave}>
+      <header className="dialog-header"><button type="button" className="dialog-close" aria-label="Close dialog" onClick={onClose}>×</button><h2 id="packing-edit-title">Edit packing</h2><span /></header>
+      <label className="dialog-field">Packing name<input autoFocus required value={name} onChange={(event) => onNameChange(event.target.value)} /></label>
+      <fieldset className="icon-picker"><legend>Icon</legend><div>{PACKING_ICONS.map((option) => <button type="button" key={option} className={icon === option ? "selected" : ""} aria-pressed={icon === option} onClick={() => onIconChange(option)}>{option}</button>)}</div></fieldset>
+      <button type="submit" className="button button-primary dialog-save">Save changes</button>
+      <button type="button" className="dialog-remove" onClick={onDelete}><span aria-hidden="true">♲</span> Delete packing</button>
+    </form>
+  </div>;
+}
+
+function PackingDeleteDialog({ packing, tripName, onConfirm, onClose }) {
+  useEffect(() => {
+    const onKeyDown = (event) => { if (event.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [onClose]);
+
+  return <div className="dialog-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+    <section className="item-dialog packing-delete-dialog" role="alertdialog" aria-modal="true" aria-labelledby="packing-delete-title">
+      <header className="dialog-header"><button className="dialog-close" aria-label="Close dialog" onClick={onClose}>×</button><h2 id="packing-delete-title">Delete packing?</h2><span /></header>
+      <p><b>{packing.name}</b>{tripName ? ` from ${tripName}` : ""} and all of its items will be deleted.</p>
+      <div className="delete-dialog-actions"><button className="button button-outline" onClick={onClose}>Cancel</button><button className="button button-danger" onClick={onConfirm}>Delete packing</button></div>
+    </section>
+  </div>;
 }
 
 function ItemDialog({ mode, item, packing, name, onNameChange, onSave, onTogglePacked, onRemove, onClose }) {
