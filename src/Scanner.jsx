@@ -25,7 +25,7 @@ function cleanText(value) {
   return String(value || "").trim();
 }
 
-export default function Scanner({ packing, model, settings, threshold = 30, imageWidth = 640, onModelChange, onSettingsChange, onAdd, onMarkPacked, onClose }) {
+export default function Scanner({ packing, locked = false, model, settings, threshold = 30, imageWidth = 640, onModelChange, onSettingsChange, onAdd, onMarkPacked, onClose }) {
   const videoRef = useRef(null);
   const captureRef = useRef(null);
   const thumbRef = useRef(null);
@@ -174,8 +174,10 @@ export default function Scanner({ packing, model, settings, threshold = 30, imag
         const existingItem = matchingItems.find((item) => item.packed) || matchingItems[0];
         const category = CATEGORIES.includes(parsed.category) ? parsed.category : "Misc & Entertainment";
         const item = { name, category, iconKey: resolveItemIcon(name, category) };
-        setResult({ item, existingItem, confidence: typeof parsed.confidence === "number" ? parsed.confidence : null });
-        setStatus(existingItem ? "This item is already in the packing" : "Item detected");
+        setResult({ item, existingItem, matchingItems, confidence: typeof parsed.confidence === "number" ? parsed.confidence : null });
+        setStatus(packingRef.current.locked
+          ? matchingItems.length ? "Packing locked: existing items can still be packed or unpacked" : "Packing locked: new items cannot be added"
+          : existingItem ? "This item is already in the packing" : "Item detected");
       } catch (cause) {
         if (cause.name === "AbortError") {
           if (timedOut && runningRef.current && requestId === requestIdRef.current) {
@@ -220,15 +222,19 @@ export default function Scanner({ packing, model, settings, threshold = 30, imag
     }
   }
 
-  function markExistingPackedState() {
-    if (!result?.existingItem) return;
-    onMarkPacked(result.existingItem.id);
+  function markExistingPackedState(item = result?.existingItem) {
+    if (!item) return;
+    onMarkPacked(item.id);
     setResult(null);
     setStatus(idleStatus);
   }
 
   function addResult() {
     if (!result) return;
+    if (packingRef.current.locked) {
+      setStatus("Unlock this packing to add new items");
+      return;
+    }
     onAdd(result.item);
     setResult(null);
     setStatus(idleStatus);
@@ -249,6 +255,10 @@ export default function Scanner({ packing, model, settings, threshold = 30, imag
     setScanMode(mode);
     if (!busyRef.current && !result) setStatus(mode === "manual" ? "Tap the button below to scan" : "Fit the whole item in the frame");
   }
+
+  const matchingItems = result?.matchingItems || (result?.existingItem ? [result.existingItem] : []);
+  const packedMatch = matchingItems.find((item) => item.packed);
+  const unpackedMatch = matchingItems.find((item) => !item.packed);
 
   return (
     <main className="scanner-screen">
@@ -277,21 +287,29 @@ export default function Scanner({ packing, model, settings, threshold = 30, imag
             <div className="scan-result">
               <div>
                 <div className="scan-result-head">
-                  <div><span className="eyebrow">{result.existingItem?.packed ? "ALREADY PACKED" : result.existingItem ? "IN THIS PACKING" : "DETECTED"}</span><b>{result.item.name}</b></div>
+                  <div><span className="eyebrow">{locked ? "PACKING LOCKED" : result.existingItem?.packed ? "ALREADY PACKED" : result.existingItem ? "IN THIS PACKING" : "DETECTED"}</span><b>{result.item.name}</b></div>
                   <button className="scan-result-dismiss" aria-label="Dismiss scan result" onClick={dismissResult}>×</button>
                 </div>
                 {result.confidence !== null && <small>{Math.round(result.confidence * 100)}% confidence</small>}
+                {locked && <small>{matchingItems.length ? "You can pack or unpack an existing copy. New copies can’t be added." : "Unlock this packing to add new items."}</small>}
               </div>
               <div className="scan-actions">
-                {result.existingItem ? (
-                  <button className="button button-quiet" onClick={markExistingPackedState}>{result.existingItem.packed ? "Mark as unpacked" : "Mark as packed"}</button>
+                {locked ? (
+                  <>
+                    {unpackedMatch && <button className="button button-quiet" onClick={() => markExistingPackedState(unpackedMatch)}>Mark one packed</button>}
+                    {packedMatch && <button className="button button-primary" onClick={() => markExistingPackedState(packedMatch)}>Mark one unpacked</button>}
+                    {!matchingItems.length && <button className="button button-quiet" onClick={dismissResult}>Dismiss</button>}
+                  </>
+                ) : result.existingItem ? (
+                  <>
+                    <button className="button button-quiet" onClick={markExistingPackedState}>{result.existingItem.packed ? "Mark as unpacked" : "Mark as packed"}</button>
+                    <button className="button button-primary" onClick={addResult}>Add another</button>
+                  </>
                 ) : (
-                  <button className="button button-quiet" onClick={dismissResult}>Dismiss</button>
-                )}
-                {result.existingItem ? (
-                  <button className="button button-primary" onClick={addResult}>Add another</button>
-                ) : (
-                  <button className="button button-primary" onClick={addResult}>Add item</button>
+                  <>
+                    <button className="button button-quiet" onClick={dismissResult}>Dismiss</button>
+                    <button className="button button-primary" onClick={addResult}>Add item</button>
+                  </>
                 )}
               </div>
             </div>

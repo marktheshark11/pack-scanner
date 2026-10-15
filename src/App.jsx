@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Camera, CalendarDays, ChevronRight, MoreHorizontal } from "lucide-react";
+import { Camera, CalendarDays, ChevronRight, LockKeyhole, LockKeyholeOpen, MoreHorizontal } from "lucide-react";
 import Scanner from "./Scanner.jsx";
 import SettingsPanel from "./SettingsPanel.jsx";
 import { ItemIcon, resolveItemIcon } from "./ItemIcon.jsx";
@@ -103,10 +103,24 @@ function App() {
   }
 
   function createPacking(values) {
-    const packing = { id: makeId(), ...values, items: [] };
+    const packing = { id: makeId(), ...values, items: [], locked: false };
     updateTrip(page.tripId, (trip) => ({ ...trip, packings: [...trip.packings, packing] }));
     setExpanded(packing.id);
     setPage({ name: "trip", tripId: page.tripId });
+  }
+
+  function togglePackingLock(packingId) {
+    const packing = activeTrip?.packings.find((entry) => entry.id === packingId);
+    if (!packing) return;
+    updateTrip(page.tripId, (trip) => ({
+      ...trip,
+      packings: trip.packings.map((entry) => entry.id === packingId ? { ...entry, locked: !entry.locked } : entry),
+    }));
+    setToast(packing.locked ? `${packing.name} unlocked` : `${packing.name} locked`);
+  }
+
+  function isPackingLocked(packingId) {
+    return activeTrip?.packings.find((packing) => packing.id === packingId)?.locked === true;
   }
 
   function editPacking(packing) {
@@ -137,6 +151,10 @@ function App() {
   }
 
   function addItem(packingId, item) {
+    if (isPackingLocked(packingId)) {
+      setToast("Unlock this packing to add items");
+      return;
+    }
     updateTrip(page.tripId, (trip) => ({
       ...trip,
       packings: trip.packings.map((packing) => packing.id !== packingId ? packing : {
@@ -158,6 +176,7 @@ function App() {
   }
 
   function removeItem(packingId, itemId) {
+    if (isPackingLocked(packingId)) return;
     updateTrip(page.tripId, (trip) => ({
       ...trip,
       packings: trip.packings.map((packing) => packing.id === packingId ? { ...packing, items: packing.items.filter((item) => item.id !== itemId) } : packing),
@@ -166,7 +185,7 @@ function App() {
 
   function updateItemName(packingId, itemId, name) {
     const cleanName = name.trim();
-    if (!cleanName) return;
+    if (!cleanName || isPackingLocked(packingId)) return;
     updateTrip(page.tripId, (trip) => ({
       ...trip,
       packings: trip.packings.map((packing) => packing.id !== packingId ? packing : {
@@ -177,7 +196,7 @@ function App() {
   }
 
   function addManualItem(packingId, name) {
-    if (!name.trim()) return;
+    if (!name.trim() || isPackingLocked(packingId)) return;
     const cleanName = name.trim();
     updateTrip(page.tripId, (trip) => ({
       ...trip,
@@ -190,11 +209,13 @@ function App() {
   }
 
   function openAddDialog(packingId) {
+    if (isPackingLocked(packingId)) return;
     setDialogName("");
     setItemDialog({ mode: "add", packingId });
   }
 
   function openEditDialog(packingId, item) {
+    if (isPackingLocked(packingId)) return;
     setDialogName(item.name);
     setItemDialog({ mode: "edit", packingId, itemId: item.id });
   }
@@ -227,7 +248,7 @@ function App() {
   }, [page.name]);
 
   if (page.name === "scan" && activeTrip && activePacking) {
-    return <Scanner packing={activePacking} model={model} settings={settings} threshold={Number(settings.threshold) || 30} imageWidth={Number(settings.imageWidth) || 640} onModelChange={setModel} onSettingsChange={setSettings} onAdd={(item) => addItem(activePacking.id, item)} onMarkPacked={(itemId) => toggleItem(activePacking.id, itemId)} onClose={() => setPage({ name: "trip", tripId: activeTrip.id })} />;
+    return <Scanner packing={activePacking} locked={activePacking.locked === true} model={model} settings={settings} threshold={Number(settings.threshold) || 30} imageWidth={Number(settings.imageWidth) || 640} onModelChange={setModel} onSettingsChange={setSettings} onAdd={(item) => addItem(activePacking.id, item)} onMarkPacked={(itemId) => toggleItem(activePacking.id, itemId)} onClose={() => setPage({ name: "trip", tripId: activeTrip.id })} />;
   }
 
   return (
@@ -291,16 +312,17 @@ function App() {
                       <span className="packing-card-main-row"><span className="packing-icon">{packing.icon}</span><span className="packing-summary"><b>{packing.name}</b><small>{done} / {packing.items.length} packed</small></span></span>
                     </button>
                     <button className="packing-edit-button" aria-label={`Edit ${packing.name}`} onClick={() => editPacking(packing)}><MoreHorizontal size={18} /></button>
+                    <button className={`packing-lock-button ${packing.locked ? "is-locked" : ""}`} aria-label={packing.locked ? `Unlock ${packing.name}` : `Lock ${packing.name}`} title={packing.locked ? "Unlock packing" : "Lock packing"} aria-pressed={packing.locked === true} onClick={() => togglePackingLock(packing.id)}>{packing.locked ? <LockKeyhole size={15} /> : <LockKeyholeOpen size={15} />}</button>
                     <button className="packing-scan-shortcut" aria-label={`Scan and add an item to ${packing.name}`} onClick={() => setPage({ name: "scan", tripId: activeTrip.id, packingId: packing.id })}><Camera size={15} strokeWidth={1.8} /><span>Pack</span></button>
                   </div>
                   <span className="progress-track"><span style={{ width: `${packing.items.length ? done / packing.items.length * 100 : 0}%` }} /></span>
                 </div>
                 {!isExpanded && packing.items.length > 0 && <button className="packing-preview" aria-label={`Expand ${packing.name} items`} aria-expanded="false" onClick={() => { setExpanded(packing.id); setQuery(""); }}>{packing.items.filter((item) => item.packed).slice(0, 2).map((item) => <span key={item.id}>✓ &nbsp;{item.name}</span>)}{packing.items.length > 2 && <small>+{packing.items.length - 2} more…</small>}</button>}
                 {isExpanded && <div className="packing-expanded">
-                  <div className="item-tools"><b>Items</b><button className="button button-outline add-item-top-button" onClick={() => openAddDialog(packing.id)}>＋ &nbsp;Add item manually</button></div>
+                  <div className="item-tools"><b>Items</b><button className="button button-outline add-item-top-button" disabled={packing.locked} title={packing.locked ? "Unlock this packing to add items" : "Add item manually"} onClick={() => openAddDialog(packing.id)}>＋ &nbsp;Add item manually</button></div>
                   <label className="search-box"><span>⌕</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search items…" /></label>
                   {visibleItems.length === 0 ? <p className="empty-items">{packing.items.length ? "No matching items." : "No items yet. Add one or scan an item."}</p> : <div className="items-list">{visibleItems.map((item) => <div className="item-row" key={item.id}>
-                    <button className={`check-box ${item.packed ? "checked" : ""}`} aria-label={item.packed ? `Unpack ${item.name}` : `Mark ${item.name} packed`} onClick={() => toggleItem(packing.id, item.id)}>{item.packed ? "✓" : ""}</button><span className="item-icon"><ItemIcon name={item.name} category={item.category} iconKey={item.iconKey} size={17} /></span><span className={`item-name ${item.packed ? "item-packed" : ""}`}>{item.name}</span><button className="item-remove" aria-label={`Edit ${item.name}`} onClick={() => openEditDialog(packing.id, item)}>···</button>
+                    <button className={`check-box ${item.packed ? "checked" : ""}`} aria-label={item.packed ? `Unpack ${item.name}` : `Mark ${item.name} packed`} onClick={() => toggleItem(packing.id, item.id)}>{item.packed ? "✓" : ""}</button><span className="item-icon"><ItemIcon name={item.name} category={item.category} iconKey={item.iconKey} size={17} /></span><span className={`item-name ${item.packed ? "item-packed" : ""}`}>{item.name}</span><button className="item-remove" aria-label={packing.locked ? "Editing unavailable while packing is locked" : `Edit ${item.name}`} title={packing.locked ? "Unlock this packing to edit items" : `Edit ${item.name}`} disabled={packing.locked} onClick={() => openEditDialog(packing.id, item)}>···</button>
                   </div>)}</div>}
                 </div>}
               </article>;

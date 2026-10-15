@@ -100,6 +100,9 @@ button:disabled { cursor: not-allowed; opacity: .58; }
 .packing-scan-shortcut:hover { background: #eaf0e2; border-color: #b9c9aa; }
 .packing-edit-button { width: 28px; height: 28px; display: grid; place-items: center; flex: 0 0 auto; padding: 0; border: 1px solid transparent; border-radius: 7px; background: transparent; color: #7b8773; cursor: pointer; }
 .packing-edit-button:hover { border-color: var(--line); background: var(--tint); }
+.packing-lock-button { width: 28px; height: 28px; display: grid; place-items: center; flex: 0 0 auto; padding: 0; border: 1px solid transparent; border-radius: 7px; background: transparent; color: #718267; cursor: pointer; }
+.packing-lock-button:hover { border-color: var(--line); background: var(--tint); }
+.packing-lock-button.is-locked { border-color: #d8cda8; background: #f7f2e5; color: #817146; }
 .packing-icon { flex: 0 0 34px; height: 34px; display: grid; place-items: center; border-radius: 9px; background: #f0f3eb; font-size: 17px; }
 .packing-summary { display: grid; gap: 3px; flex: 1; }
 .packing-summary b { font-size: 11px; font-weight: 600; }
