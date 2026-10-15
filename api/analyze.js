@@ -12,7 +12,7 @@ Rules:
 {"match":"<exact list entry or null>","item":"<short English name of the item itself, or null>","item_zh":"<中文名>","category":"<one of: ${CATS.join(" | ")}>","confidence":<0-1>}
 5. If no single clear item is visible (blurry, empty, item cut off), return {"match":null,"item":null}.`;
 
-module.exports = async (req, res) => {
+export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "POST only" });
   const key = process.env.AI_GATEWAY_API_KEY;
   if (!key) return res.status(500).json({ error: "AI_GATEWAY_API_KEY is not set in the Vercel project env" });
@@ -38,4 +38,4 @@ module.exports = async (req, res) => {
   } catch (e) {
     res.status(502).json({ error: "Gateway unreachable: " + e.message });
   }
-};
+}

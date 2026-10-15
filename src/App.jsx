@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import Scanner from "./Scanner.jsx";
+import SettingsPanel from "./SettingsPanel.jsx";
 import { MODELS, PACKING_ICONS } from "./constants.js";
 
 const STORE_KEY = "pack-scanner-trips-v1";
@@ -45,8 +46,8 @@ function App() {
   const [toast, setToast] = useState("");
   const [expanded, setExpanded] = useState(null);
   const [query, setQuery] = useState("");
-  const [addingTo, setAddingTo] = useState(null);
-  const [newItemName, setNewItemName] = useState("");
+  const [itemDialog, setItemDialog] = useState(null);
+  const [dialogName, setDialogName] = useState("");
 
   useEffect(() => {
     localStorage.setItem(STORE_KEY, JSON.stringify(trips));
@@ -111,11 +112,58 @@ function App() {
     }));
   }
 
+  function updateItemName(packingId, itemId, name) {
+    const cleanName = name.trim();
+    if (!cleanName) return;
+    updateTrip(page.tripId, (trip) => ({
+      ...trip,
+      packings: trip.packings.map((packing) => packing.id !== packingId ? packing : {
+        ...packing,
+        items: packing.items.map((item) => item.id === itemId ? { ...item, name: cleanName } : item),
+      }),
+    }));
+  }
+
   function addManualItem(packingId, name) {
     if (!name.trim()) return;
-    addItem(packingId, { name: name.trim(), icon: "＋" });
-    setNewItemName("");
-    setAddingTo(null);
+    const cleanName = name.trim();
+    updateTrip(page.tripId, (trip) => ({
+      ...trip,
+      packings: trip.packings.map((packing) => packing.id !== packingId ? packing : {
+        ...packing,
+        items: [...packing.items, { id: makeId(), name: cleanName, category: "Misc & Entertainment", icon: "👕", packed: false }],
+      }),
+    }));
+    setToast(`${cleanName} added`);
+  }
+
+  function openAddDialog(packingId) {
+    setDialogName("");
+    setItemDialog({ mode: "add", packingId });
+  }
+
+  function openEditDialog(packingId, item) {
+    setDialogName(item.name);
+    setItemDialog({ mode: "edit", packingId, itemId: item.id });
+  }
+
+  function saveItemDialog() {
+    if (!itemDialog || !dialogName.trim()) return;
+    if (itemDialog.mode === "add") addManualItem(itemDialog.packingId, dialogName);
+    else updateItemName(itemDialog.packingId, itemDialog.itemId, dialogName);
+    setItemDialog(null);
+  }
+
+  function toggleItemFromDialog() {
+    if (!itemDialog) return;
+    toggleItem(itemDialog.packingId, itemDialog.itemId);
+    setItemDialog(null);
+  }
+
+  function removeItemFromDialog() {
+    if (!itemDialog) return;
+    removeItem(itemDialog.packingId, itemDialog.itemId);
+    setItemDialog(null);
   }
 
   const title = useMemo(() => {
@@ -127,7 +175,7 @@ function App() {
   }, [page.name]);
 
   if (page.name === "scan" && activeTrip && activePacking) {
-    return <Scanner packing={activePacking} model={model} threshold={Number(settings.threshold) || 30} imageWidth={Number(settings.imageWidth) || 640} onModelChange={setModel} onAdd={(item) => addItem(activePacking.id, item)} onMarkPacked={(itemId) => toggleItem(activePacking.id, itemId)} onClose={() => setPage({ name: "trip", tripId: activeTrip.id })} />;
+    return <Scanner packing={activePacking} model={model} settings={settings} threshold={Number(settings.threshold) || 30} imageWidth={Number(settings.imageWidth) || 640} onModelChange={setModel} onSettingsChange={setSettings} onAdd={(item) => addItem(activePacking.id, item)} onMarkPacked={(itemId) => toggleItem(activePacking.id, itemId)} onClose={() => setPage({ name: "trip", tripId: activeTrip.id })} />;
   }
 
   return (
@@ -161,7 +209,7 @@ function App() {
 
       {page.name === "new-trip" && <TripForm onSave={createTrip} />}
 
-      {page.name === "settings" && <SettingsForm model={model} onModelChange={setModel} settings={settings} onSettingsChange={setSettings} />}
+      {page.name === "settings" && <SettingsPanel model={model} onModelChange={setModel} settings={settings} onSettingsChange={setSettings} />}
 
       {page.name === "trip" && activeTrip && (
         <section className="page-content trip-detail-page">
@@ -182,14 +230,13 @@ function App() {
                 </button>
                 {!isExpanded && packing.items.length > 0 && <div className="packing-preview">{packing.items.filter((item) => item.packed).slice(0, 2).map((item) => <span key={item.id}>✓ &nbsp;{item.name}</span>)}{packing.items.length > 2 && <small>+{packing.items.length - 2} more</small>}</div>}
                 {isExpanded && <div className="packing-expanded">
-                  <div className="item-tools"><b>Items</b><button className="text-button" onClick={() => setAddingTo(addingTo === packing.id ? null : packing.id)}>＋ Add</button></div>
+                  <div className="item-tools"><b>Items</b><button className="text-button" onClick={() => openAddDialog(packing.id)}>＋ Add</button></div>
                   <label className="search-box"><span>⌕</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search items…" /></label>
                   {visibleItems.length === 0 ? <p className="empty-items">{packing.items.length ? "No matching items." : "No items yet. Add one or scan an item."}</p> : <div className="items-list">{visibleItems.map((item) => <div className="item-row" key={item.id}>
-                    <button className={`check-box ${item.packed ? "checked" : ""}`} aria-label={item.packed ? `Unpack ${item.name}` : `Mark ${item.name} packed`} onClick={() => toggleItem(packing.id, item.id)}>{item.packed ? "✓" : ""}</button><span className="item-icon">{item.icon}</span><span className={`item-name ${item.packed ? "item-packed" : ""}`}>{item.name}</span><button className="item-remove" aria-label={`Remove ${item.name}`} onClick={() => removeItem(packing.id, item.id)}>···</button>
+                    <button className={`check-box ${item.packed ? "checked" : ""}`} aria-label={item.packed ? `Unpack ${item.name}` : `Mark ${item.name} packed`} onClick={() => toggleItem(packing.id, item.id)}>{item.packed ? "✓" : ""}</button><span className="item-icon">{item.icon}</span><span className={`item-name ${item.packed ? "item-packed" : ""}`}>{item.name}</span><button className="item-remove" aria-label={`Edit ${item.name}`} onClick={() => openEditDialog(packing.id, item)}>···</button>
                   </div>)}</div>}
-                  {addingTo === packing.id && <form className="inline-add-form" onSubmit={(event) => { event.preventDefault(); addManualItem(packing.id, newItemName); }}><input autoFocus aria-label="New item name" value={newItemName} onChange={(event) => setNewItemName(event.target.value)} placeholder="e.g. Toothbrush" /><button className="button button-primary" type="submit">Add</button></form>}
                   <button className="button button-primary scan-button" onClick={() => setPage({ name: "scan", tripId: activeTrip.id, packingId: packing.id })}>◎ &nbsp; Scan item</button>
-                  <button className="button button-outline add-item-button" onClick={() => setAddingTo(addingTo === packing.id ? null : packing.id)}>＋ &nbsp; Add item</button>
+                  <button className="button button-outline add-item-button" onClick={() => openAddDialog(packing.id)}>＋ &nbsp; Add item</button>
                 </div>}
               </article>;
             })}
@@ -199,6 +246,7 @@ function App() {
       )}
 
       {page.name === "new-packing" && activeTrip && <PackingForm trip={activeTrip} onSave={createPacking} />}
+      {itemDialog && activeTrip && <ItemDialog mode={itemDialog.mode} item={activeTrip.packings.find((packing) => packing.id === itemDialog.packingId)?.items.find((item) => item.id === itemDialog.itemId)} packing={activeTrip.packings.find((packing) => packing.id === itemDialog.packingId)} name={dialogName} onNameChange={setDialogName} onSave={saveItemDialog} onTogglePacked={toggleItemFromDialog} onRemove={removeItemFromDialog} onClose={() => setItemDialog(null)} />}
       {toast && <div className="toast" role="status">✓ &nbsp;{toast}</div>}
     </main>
   );
@@ -243,18 +291,26 @@ function PackingForm({ trip, onSave }) {
   </form>;
 }
 
-function SettingsForm({ model, onModelChange, settings, onSettingsChange }) {
-  const isKnownModel = MODELS.includes(model);
-  const [customModel, setCustomModel] = useState(isKnownModel ? "" : model);
-  const [customActive, setCustomActive] = useState(!isKnownModel);
-  return <section className="settings-page">
-    <div className="form-intro"><span className="eyebrow">PREFERENCES</span><h2>Scan settings</h2><p>Adjust recognition for your device and camera.</p></div>
-    <label className="field-label">AI model<select value={customActive ? "__custom" : model} onChange={(event) => { if (event.target.value !== "__custom") { setCustomActive(false); onModelChange(event.target.value); } else { setCustomActive(true); onModelChange(customModel || MODELS[0]); } }}>
-      {MODELS.map((choice) => <option key={choice} value={choice}>{choice}</option>)}<option value="__custom">Custom model…</option>
-    </select></label>
-    {customActive && <label className="field-label">Custom model ID<input value={customModel} onChange={(event) => { setCustomModel(event.target.value); onModelChange(event.target.value || MODELS[0]); }} placeholder="creator/model" /></label>}
-    <label className="field-label slider-label"><span className="setting-label-row">Change threshold <b>{settings.threshold || 30}</b></span><input type="range" min="1" max="60" value={settings.threshold || 30} onChange={(event) => onSettingsChange((current) => ({ ...current, threshold: Number(event.target.value) }))} /></label>
-    <label className="field-label">Image width<select value={settings.imageWidth || 640} onChange={(event) => onSettingsChange((current) => ({ ...current, imageWidth: Number(event.target.value) }))}><option value="384">384 px</option><option value="640">640 px</option><option value="896">896 px</option><option value="1280">1280 px</option></select></label>
-    <p className="settings-note">Packing data is saved only in this browser. AI recognition needs an internet connection.</p>
-  </section>;
+function ItemDialog({ mode, item, packing, name, onNameChange, onSave, onTogglePacked, onRemove, onClose }) {
+  useEffect(() => {
+    const onKeyDown = (event) => { if (event.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [onClose]);
+
+  const editing = mode === "edit";
+  const visualIcon = item?.icon && item.icon !== "＋" ? item.icon : "👕";
+  return <div className="dialog-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+    <form className="item-dialog" role="dialog" aria-modal="true" aria-labelledby="item-dialog-title" onSubmit={(event) => { event.preventDefault(); onSave(); }}>
+      <header className="dialog-header"><button type="button" className="dialog-close" aria-label="Close dialog" onClick={onClose}>×</button><h2 id="item-dialog-title">{editing ? "Edit item" : "Add item"}</h2><span /></header>
+      <p className="dialog-packing-name">{packing?.name || "Packing"}</p>
+      <div className="dialog-item-art" aria-hidden="true">{visualIcon}</div>
+      <label className="dialog-field">Item name<input autoFocus required value={name} onChange={(event) => onNameChange(event.target.value)} placeholder="Name" /></label>
+      <button type="submit" className="button button-primary dialog-save">Save</button>
+      {editing && <>
+        <button type="button" className="button button-outline dialog-toggle" onClick={onTogglePacked}>{item?.packed ? "Mark as unpacked" : "Mark as packed"}</button>
+        <button type="button" className="dialog-remove" onClick={onRemove}><span aria-hidden="true">♲</span> Remove from packing</button>
+      </>}
+    </form>
+  </div>;
 }
