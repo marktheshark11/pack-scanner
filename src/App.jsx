@@ -304,7 +304,7 @@ function TripForm({ onSave }) {
     onSave({ destination: destination.trim(), startDate, endDate });
   }
   return <form className="form-page" onSubmit={submit}>
-    <label className="field-label">Destination<input autoFocus value={destination} onChange={(event) => setDestination(event.target.value)} placeholder="e.g. Spain" /></label>
+    <label className="field-label">Destination<input value={destination} onChange={(event) => setDestination(event.target.value)} placeholder="e.g. Spain" /></label>
     <div className="date-fields"><label className="field-label">Start date<input type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} /></label><label className="field-label">End date<input type="date" value={endDate} min={startDate || undefined} onChange={(event) => setEndDate(event.target.value)} /></label></div>
     {error && <p className="form-error" role="alert">{error}</p>}
     <button className="button button-primary form-submit" type="submit">Save trip <span>→</span></button>
@@ -322,7 +322,7 @@ function PackingForm({ trip, onSave }) {
   }
   return <form className="form-page" onSubmit={submit}>
     <label className="field-label">Trip<input value={trip.destination} readOnly /></label>
-    <label className="field-label">Name<input autoFocus value={name} onChange={(event) => setName(event.target.value)} placeholder="e.g. Suitcase" /></label>
+    <label className="field-label">Name<input value={name} onChange={(event) => setName(event.target.value)} placeholder="e.g. Suitcase" /></label>
     <fieldset className="icon-picker"><legend>Choose an icon</legend><div>{PACKING_ICONS.map((option) => <button type="button" key={option} className={icon === option ? "selected" : ""} aria-pressed={icon === option} onClick={() => setIcon(option)}>{option}</button>)}</div></fieldset>
     {error && <p className="form-error" role="alert">{error}</p>}
     <button className="button button-primary form-submit" type="submit">Save packing <span>→</span></button>
@@ -339,7 +339,7 @@ function PackingEditDialog({ name, icon, onNameChange, onIconChange, onSave, onD
   return <div className="dialog-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
     <form className="item-dialog packing-edit-dialog" role="dialog" aria-modal="true" aria-labelledby="packing-edit-title" onSubmit={onSave}>
       <header className="dialog-header"><button type="button" className="dialog-close" aria-label="Close dialog" onClick={onClose}>×</button><h2 id="packing-edit-title">Edit packing</h2><span /></header>
-      <label className="dialog-field">Packing name<input autoFocus required value={name} onChange={(event) => onNameChange(event.target.value)} /></label>
+      <label className="dialog-field">Packing name<input required value={name} onChange={(event) => onNameChange(event.target.value)} /></label>
       <fieldset className="icon-picker"><legend>Icon</legend><div>{PACKING_ICONS.map((option) => <button type="button" key={option} className={icon === option ? "selected" : ""} aria-pressed={icon === option} onClick={() => onIconChange(option)}>{option}</button>)}</div></fieldset>
       <button type="submit" className="button button-primary dialog-save">Save changes</button>
       <button type="button" className="dialog-remove" onClick={onDelete}><span aria-hidden="true">♲</span> Delete packing</button>
@@ -377,7 +377,7 @@ function ItemDialog({ mode, item, packing, name, onNameChange, onSave, onToggleP
       <header className="dialog-header"><button type="button" className="dialog-close" aria-label="Close dialog" onClick={onClose}>×</button><h2 id="item-dialog-title">{editing ? "Edit item" : "Add item"}</h2><span /></header>
       <p className="dialog-packing-name">{packing?.name || "Packing"}</p>
       <div className="dialog-item-art"><ItemIcon name={item?.name} category={item?.category} iconKey={iconKey} size={62} strokeWidth={1.7} /></div>
-      <label className="dialog-field">Item name<input autoFocus required value={name} onChange={(event) => onNameChange(event.target.value)} placeholder="Name" /></label>
+      <label className="dialog-field">Item name<input required value={name} onChange={(event) => onNameChange(event.target.value)} placeholder="Name" /></label>
       <button type="submit" className="button button-primary dialog-save">Save</button>
       {editing && <>
         <button type="button" className="button button-outline dialog-toggle" onClick={onTogglePacked}>{item?.packed ? "Mark as unpacked" : "Mark as packed"}</button>

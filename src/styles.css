@@ -230,6 +230,25 @@ button:disabled { cursor: not-allowed; opacity: .58; }
 .scanner-settings-dialog .form-intro h2 { font-size: 18px; }
 .scanner-settings-dialog .settings-note { margin: 8px 0 12px; }
 
+@media (max-width: 699px) {
+  .app-shell .field-label input,
+  .app-shell .field-label select,
+  .app-shell .dialog-field input,
+  .app-shell .search-box input,
+  .app-shell .inline-add-form input,
+  .scanner-screen .field-label input,
+  .scanner-screen .field-label select,
+  .scanner-screen .dialog-field input,
+  .scanner-screen .search-box input,
+  .scanner-screen .inline-add-form input,
+  .scanner-screen .model-edit input,
+  .scanner-screen .model-edit select {
+    font-size: 16px;
+  }
+
+  .app-shell .search-box { height: 40px; }
+}
+
 @media (min-width: 700px) {
   body { min-height: 100dvh; display: grid; place-items: center; padding: 24px; }
   .app-shell { width: min(var(--app-max-width), calc(100vw - 48px)); height: min(820px, calc(100dvh - 48px)); min-height: min(620px, calc(100dvh - 48px)); border: 1px solid #e3e7de; border-radius: 12px; box-shadow: 0 15px 50px #26301e10; padding-inline: 28px; }
