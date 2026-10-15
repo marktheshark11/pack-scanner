@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Camera, MoreHorizontal } from "lucide-react";
+import { Camera, ChevronRight, MoreHorizontal } from "lucide-react";
 import Scanner from "./Scanner.jsx";
 import SettingsPanel from "./SettingsPanel.jsx";
 import { ItemIcon, resolveItemIcon } from "./ItemIcon.jsx";
@@ -54,6 +54,8 @@ function App() {
   const [packingName, setPackingName] = useState("");
   const [packingIcon, setPackingIcon] = useState(PACKING_ICONS[0]);
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [tripDialog, setTripDialog] = useState(null);
+  const [tripDeleteTarget, setTripDeleteTarget] = useState(null);
 
   useEffect(() => {
     localStorage.setItem(STORE_KEY, JSON.stringify(trips));
@@ -80,6 +82,24 @@ function App() {
     const trip = { id: makeId(), ...values, packings: [], createdAt: Date.now() };
     setTrips((current) => [trip, ...current]);
     setPage({ name: "trip", tripId: trip.id });
+  }
+
+  function editTrip(trip) {
+    setTripDialog(trip);
+  }
+
+  function saveTripEdit(values) {
+    if (!tripDialog) return;
+    updateTrip(tripDialog.id, (trip) => ({ ...trip, ...values }));
+    setToast(`${values.destination} updated`);
+    setTripDialog(null);
+  }
+
+  function confirmDeleteTrip() {
+    if (!tripDeleteTarget) return;
+    setTrips((current) => current.filter((trip) => trip.id !== tripDeleteTarget.id));
+    setTripDeleteTarget(null);
+    setToast(`${tripDeleteTarget.destination} deleted`);
   }
 
   function createPacking(values) {
@@ -229,11 +249,18 @@ function App() {
           ) : (
             <div className="trip-list">{trips.map((trip) => {
               const total = countItems(trip.packings);
-              return <button className="trip-card" key={trip.id} onClick={() => { setExpanded(null); setPage({ name: "trip", tripId: trip.id }); }}>
-                <div className="trip-card-top"><div className="destination-symbol">⌖</div><span className="arrow">›</span></div>
-                <h3>{trip.destination}</h3><p className="date-line"><span>▦</span>{dateRange(trip.startDate, trip.endDate)}</p>
-                <div className="trip-card-footer"><span>{trip.packings.length} {trip.packings.length === 1 ? "packing" : "packings"}</span><i /> <span>{total} {total === 1 ? "item" : "items"}</span></div>
-              </button>;
+              const openTrip = () => { setExpanded(null); setPage({ name: "trip", tripId: trip.id }); };
+              return <article className="trip-card" key={trip.id}>
+                <button className="trip-card-main" aria-label={`Open trip to ${trip.destination}`} onClick={openTrip}>
+                  <div className="trip-card-top"><div className="destination-symbol">⌖</div></div>
+                  <h3>{trip.destination}</h3><p className="date-line"><span>▦</span>{dateRange(trip.startDate, trip.endDate)}</p>
+                  <div className="trip-card-footer"><span>{trip.packings.length} {trip.packings.length === 1 ? "packing" : "packings"}</span><i /> <span>{total} {total === 1 ? "item" : "items"}</span></div>
+                </button>
+                <div className="trip-card-actions">
+                  <button className="trip-edit-button" aria-label={`Edit ${trip.destination}`} onClick={() => editTrip(trip)}><MoreHorizontal size={18} /></button>
+                  <button className="trip-open-button" aria-label={`Open ${trip.destination}`} onClick={openTrip}><ChevronRight size={19} /></button>
+                </div>
+              </article>;
             })}</div>
           )}
           <button className="button button-outline full-width add-trip-bottom" onClick={() => setPage({ name: "new-trip" })}>＋ &nbsp;Add trip</button>
@@ -241,6 +268,8 @@ function App() {
       )}
 
       {page.name === "new-trip" && <TripForm onSave={createTrip} />}
+      {tripDialog && <TripEditDialog trip={tripDialog} onSave={saveTripEdit} onDelete={() => { setTripDeleteTarget(tripDialog); setTripDialog(null); }} onClose={() => setTripDialog(null)} />}
+      {tripDeleteTarget && <TripDeleteDialog trip={tripDeleteTarget} onConfirm={confirmDeleteTrip} onClose={() => setTripDeleteTarget(null)} />}
 
       {page.name === "settings" && <SettingsPanel model={model} onModelChange={setModel} settings={settings} onSettingsChange={setSettings} />}
 
@@ -327,6 +356,54 @@ function PackingForm({ trip, onSave }) {
     {error && <p className="form-error" role="alert">{error}</p>}
     <button className="button button-primary form-submit" type="submit">Save packing <span>→</span></button>
   </form>;
+}
+
+function TripEditDialog({ trip, onSave, onDelete, onClose }) {
+  const [destination, setDestination] = useState(trip.destination);
+  const [startDate, setStartDate] = useState(trip.startDate || "");
+  const [endDate, setEndDate] = useState(trip.endDate || "");
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    const onKeyDown = (event) => { if (event.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [onClose]);
+
+  function submit(event) {
+    event.preventDefault();
+    if (!destination.trim()) return setError("Add a destination to continue.");
+    if (startDate && endDate && endDate < startDate) return setError("End date must be after the start date.");
+    onSave({ destination: destination.trim(), startDate, endDate });
+  }
+
+  return <div className="dialog-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+    <form className="item-dialog trip-edit-dialog" role="dialog" aria-modal="true" aria-labelledby="trip-edit-title" onSubmit={submit}>
+      <header className="dialog-header"><button type="button" className="dialog-close" aria-label="Close dialog" onClick={onClose}>×</button><h2 id="trip-edit-title">Edit trip</h2><span /></header>
+      <label className="dialog-field">Destination<input required value={destination} onChange={(event) => setDestination(event.target.value)} /></label>
+      <label className="dialog-field">Start date<input type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} /></label>
+      <label className="dialog-field">End date<input type="date" min={startDate || undefined} value={endDate} onChange={(event) => setEndDate(event.target.value)} /></label>
+      {error && <p className="form-error" role="alert">{error}</p>}
+      <button type="submit" className="button button-primary dialog-save">Save changes</button>
+      <button type="button" className="dialog-remove" onClick={onDelete}><span aria-hidden="true">♲</span> Delete trip</button>
+    </form>
+  </div>;
+}
+
+function TripDeleteDialog({ trip, onConfirm, onClose }) {
+  useEffect(() => {
+    const onKeyDown = (event) => { if (event.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [onClose]);
+
+  return <div className="dialog-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+    <section className="item-dialog packing-delete-dialog" role="alertdialog" aria-modal="true" aria-labelledby="trip-delete-title">
+      <header className="dialog-header"><button className="dialog-close" aria-label="Close dialog" onClick={onClose}>×</button><h2 id="trip-delete-title">Delete trip?</h2><span /></header>
+      <p><b>{trip.destination}</b> and all of its packings and items will be deleted.</p>
+      <div className="delete-dialog-actions"><button className="button button-outline" onClick={onClose}>Cancel</button><button className="button button-danger" onClick={onConfirm}>Delete trip</button></div>
+    </section>
+  </div>;
 }
 
 function PackingEditDialog({ name, icon, onNameChange, onIconChange, onSave, onDelete, onClose }) {

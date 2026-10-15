@@ -48,11 +48,15 @@ button:disabled { cursor: not-allowed; opacity: .58; }
 .section-heading h2, .section-heading h3 { font: 700 16px/1.25 Manrope, sans-serif; margin: 4px 0 0; letter-spacing: -.3px; }
 .counter-badge { display: grid; place-items: center; min-width: 25px; height: 25px; padding: 0 7px; color: var(--green-deep); background: #e8eddf; border-radius: 8px; font-size: 11px; font-weight: 700; }
 .trip-list, .packing-list { display: grid; gap: 10px; }
-.trip-card { display: block; text-align: left; width: 100%; padding: 13px 14px 0; border: 1px solid var(--line); border-radius: 9px; background: var(--surface); box-shadow: var(--shadow); cursor: pointer; transition: transform .16s, border-color .16s, background .16s; }
+.trip-card { position: relative; width: 100%; padding: 0; border: 1px solid var(--line); border-radius: 9px; background: var(--surface); box-shadow: var(--shadow); transition: transform .16s, border-color .16s; }
 .trip-card:hover { transform: translateY(-1px); border-color: var(--line-dark); }
-.trip-card-top { display: flex; align-items: center; justify-content: space-between; }
+.trip-card-main { display: block; width: 100%; padding: 13px 14px 0; border: 0; border-radius: inherit; background: transparent; color: inherit; text-align: left; cursor: pointer; }
+.trip-card-main:hover { background: #fbfcf9; }
+.trip-card-top { display: flex; align-items: center; }
+.trip-card-actions { position: absolute; top: 13px; right: 12px; display: flex; align-items: center; gap: 3px; }
+.trip-edit-button, .trip-open-button { width: 27px; height: 28px; display: grid; place-items: center; padding: 0; border: 1px solid transparent; border-radius: 7px; background: transparent; color: #829076; cursor: pointer; }
+.trip-edit-button:hover, .trip-open-button:hover { border-color: var(--line); background: var(--tint); }
 .destination-symbol { width: 29px; height: 29px; display: grid; place-items: center; color: var(--green); background: var(--tint); border-radius: 9px; font-size: 18px; }
-.arrow { color: #9aa58f; font-size: 25px; line-height: 1; }
 .trip-card h3 { margin: 8px 0 6px; font: 700 17px Manrope, sans-serif; }
 .date-line { display: flex; align-items: center; gap: 7px; color: var(--muted); margin: 0; font-size: 11px; }
 .date-line span { color: #819073; font-size: 13px; }
