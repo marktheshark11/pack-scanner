@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Camera } from "lucide-react";
 import Scanner from "./Scanner.jsx";
 import SettingsPanel from "./SettingsPanel.jsx";
 import { ItemIcon, resolveItemIcon } from "./ItemIcon.jsx";
@@ -224,20 +225,23 @@ function App() {
               const isExpanded = expanded === packing.id;
               const visibleItems = packing.items.filter((item) => item.name.toLowerCase().includes(query.toLowerCase()));
               return <article className={`packing-card ${isExpanded ? "is-expanded" : ""}`} key={packing.id}>
-                <button className="packing-card-toggle" onClick={() => { setExpanded(isExpanded ? null : packing.id); setQuery(""); }} aria-expanded={isExpanded}>
-                  <span className="packing-icon">{packing.icon}</span><span className="packing-summary"><b>{packing.name}</b><small>{done} / {packing.items.length} packed</small></span>
-                  <span className="packing-chevron">{isExpanded ? "⌃" : "⌄"}</span>
+                <div className="packing-card-head">
+                  <div className="packing-card-topline">
+                    <button className="packing-card-toggle" onClick={() => { setExpanded(isExpanded ? null : packing.id); setQuery(""); }} aria-expanded={isExpanded}>
+                      <span className="packing-card-main-row"><span className="packing-icon">{packing.icon}</span><span className="packing-summary"><b>{packing.name}</b><small>{done} / {packing.items.length} packed</small></span></span>
+                    </button>
+                    <button className="packing-scan-shortcut" aria-label={`Scan and add an item to ${packing.name}`} onClick={() => setPage({ name: "scan", tripId: activeTrip.id, packingId: packing.id })}><Camera size={15} strokeWidth={1.8} /><span>Pack</span></button>
+                  </div>
                   <span className="progress-track"><span style={{ width: `${packing.items.length ? done / packing.items.length * 100 : 0}%` }} /></span>
-                </button>
-                {!isExpanded && packing.items.length > 0 && <div className="packing-preview">{packing.items.filter((item) => item.packed).slice(0, 2).map((item) => <span key={item.id}>✓ &nbsp;{item.name}</span>)}{packing.items.length > 2 && <small>+{packing.items.length - 2} more</small>}</div>}
+                </div>
+                {!isExpanded && packing.items.length > 0 && <button className="packing-preview" aria-label={`Expand ${packing.name} items`} aria-expanded="false" onClick={() => { setExpanded(packing.id); setQuery(""); }}>{packing.items.filter((item) => item.packed).slice(0, 2).map((item) => <span key={item.id}>✓ &nbsp;{item.name}</span>)}{packing.items.length > 2 && <small>+{packing.items.length - 2} more…</small>}</button>}
                 {isExpanded && <div className="packing-expanded">
-                  <div className="item-tools"><b>Items</b><button className="text-button" onClick={() => openAddDialog(packing.id)}>＋ Add</button></div>
+                  <div className="item-tools"><b>Items</b><button className="text-button" onClick={() => openAddDialog(packing.id)}>＋ Add item manually</button></div>
                   <label className="search-box"><span>⌕</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search items…" /></label>
                   {visibleItems.length === 0 ? <p className="empty-items">{packing.items.length ? "No matching items." : "No items yet. Add one or scan an item."}</p> : <div className="items-list">{visibleItems.map((item) => <div className="item-row" key={item.id}>
                     <button className={`check-box ${item.packed ? "checked" : ""}`} aria-label={item.packed ? `Unpack ${item.name}` : `Mark ${item.name} packed`} onClick={() => toggleItem(packing.id, item.id)}>{item.packed ? "✓" : ""}</button><span className="item-icon"><ItemIcon name={item.name} category={item.category} iconKey={item.iconKey} size={17} /></span><span className={`item-name ${item.packed ? "item-packed" : ""}`}>{item.name}</span><button className="item-remove" aria-label={`Edit ${item.name}`} onClick={() => openEditDialog(packing.id, item)}>···</button>
                   </div>)}</div>}
-                  <button className="button button-primary scan-button" onClick={() => setPage({ name: "scan", tripId: activeTrip.id, packingId: packing.id })}>◎ &nbsp; Scan item</button>
-                  <button className="button button-outline add-item-button" onClick={() => openAddDialog(packing.id)}>＋ &nbsp; Add item</button>
+                  <button className="button button-outline add-item-button" onClick={() => openAddDialog(packing.id)}>＋ &nbsp; Add item manually</button>
                 </div>}
               </article>;
             })}
