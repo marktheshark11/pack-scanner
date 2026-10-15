@@ -185,7 +185,7 @@ function App() {
       <header className={`app-header header-${page.name}`}>
         {page.name === "trips" ? <>
           <h1>{title}</h1>
-          <div className="header-actions"><button className="icon-button" aria-label="Settings" onClick={() => setPage({ name: "settings" })}>⚙</button><button className="icon-button header-add" aria-label="Create trip" onClick={() => setPage({ name: "new-trip" })}>＋</button></div>
+          <div className="header-actions"><button className="icon-button" aria-label="Settings" onClick={() => setPage({ name: "settings" })}>⚙</button></div>
         </> : <>
           <button className="icon-button header-back" aria-label={page.name === "new-trip" || page.name === "settings" ? "Close" : "Back"} onClick={() => page.name === "new-trip" || page.name === "settings" ? setPage({ name: "trips" }) : page.name === "new-packing" ? setPage({ name: "trip", tripId: page.tripId }) : setPage({ name: "trips" })}>{page.name === "new-trip" || page.name === "new-packing" ? "×" : "‹"}</button>
           <h1>{title}</h1><span className="header-balance" />
@@ -206,6 +206,7 @@ function App() {
               </button>;
             })}</div>
           )}
+          <button className="button button-outline full-width add-trip-bottom" onClick={() => setPage({ name: "new-trip" })}>＋ &nbsp;Add trip</button>
         </section>
       )}
 

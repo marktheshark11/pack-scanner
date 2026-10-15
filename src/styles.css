@@ -40,6 +40,9 @@ button:disabled { cursor: not-allowed; opacity: .58; }
 .header-add { margin-left: auto; }
 .page-content, .form-page, .settings-page { width: 100%; }
 .page-content { flex: 1; min-height: 0; overflow-y: auto; padding: 11px 0 16px; scrollbar-width: thin; }
+.page-trips .page-content { display: flex; flex-direction: column; }
+.page-trips .trip-list { flex: 0 0 auto; }
+.page-trips .empty-state { flex: 1; }
 .trip-detail-page { display: flex; flex-direction: column; row-gap: 12px; }
 .section-heading { display: flex; align-items: center; justify-content: space-between; margin: 12px 0 15px; }
 .section-heading h2, .section-heading h3 { font: 700 16px/1.25 Manrope, sans-serif; margin: 4px 0 0; letter-spacing: -.3px; }
@@ -120,6 +123,7 @@ button:disabled { cursor: not-allowed; opacity: .58; }
 .inline-add-form input { flex: 1; min-width: 0; height: 35px; padding: 0 9px; border: 1px solid var(--line); border-radius: 6px; background: #fff; font-size: 10px; }
 .inline-add-form .button { min-height: 35px; }
 .add-packing-bottom { position: sticky; bottom: 0; flex: 0 0 auto; margin-top: auto; background: var(--surface); }
+.add-trip-bottom { position: sticky; bottom: 0; flex: 0 0 auto; margin-top: auto; background: var(--surface); }
 .tip-line { color: var(--muted); text-align: center; font-size: 9px; margin: 12px 0 0; }
 .form-page { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow-y: auto; padding: 5px 0 24px; }
 .settings-page { flex: 1; min-height: 0; overflow-y: auto; padding: 5px 0 24px; }
