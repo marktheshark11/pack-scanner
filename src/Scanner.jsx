@@ -51,6 +51,7 @@ export default function Scanner({ packing, model, settings, threshold = 30, imag
   const [showSettings, setShowSettings] = useState(false);
   const [scanMode, setScanMode] = useState(() => localStorage.getItem("pack-scanner-scan-mode") === "automatic" ? "automatic" : "manual");
   const scanModeRef = useRef(scanMode);
+  const idleStatus = scanMode === "manual" ? "Tap the button below to scan" : "Fit the whole item in the frame";
 
   useEffect(() => {
     scanModeRef.current = scanMode;
@@ -96,7 +97,7 @@ export default function Scanner({ packing, model, settings, threshold = 30, imag
         setTorchAvailable(Boolean(trackRef.current.getCapabilities?.().torch));
         lastScannedThumbRef.current = null;
         runningRef.current = true;
-        setStatus("Fit the whole item in the frame");
+        setStatus(scanModeRef.current === "manual" ? "Tap the button below to scan" : "Fit the whole item in the frame");
         timerRef.current = window.setInterval(tick, INTERVAL);
         tick();
       } catch (cause) {
@@ -115,9 +116,9 @@ export default function Scanner({ packing, model, settings, threshold = 30, imag
         if (busyRef.current) return;
         const forced = forceScanRef.current;
         const lastScanned = lastScannedThumbRef.current;
-        if (lastScanned && !forced) {
+        if (!forced) {
           if (scanModeRef.current === "manual") return;
-          if (frameDifference(current, lastScanned) < threshold) return;
+          if (lastScanned && frameDifference(current, lastScanned) < threshold) return;
         }
         forceScanRef.current = false;
         lastScannedThumbRef.current = current;
@@ -161,7 +162,9 @@ export default function Scanner({ packing, model, settings, threshold = 30, imag
         const parsed = JSON.parse(match[0]);
         if (!runningRef.current || requestId !== requestIdRef.current) return;
         if (!parsed.item && !parsed.match) {
-          setStatus("No clear item detected. Try holding it steady in the frame.");
+          setStatus(scanModeRef.current === "manual"
+            ? "No clear item detected. Tap the button below to try again."
+            : "No clear item detected. Fit the whole item in the frame.");
           setResult(null);
           return;
         }
@@ -175,9 +178,13 @@ export default function Scanner({ packing, model, settings, threshold = 30, imag
         setStatus(existingItem ? "This item is already in the packing" : "Item detected");
       } catch (cause) {
         if (cause.name === "AbortError") {
-          if (timedOut && runningRef.current && requestId === requestIdRef.current) setError("Scan timed out. Try again.");
+          if (timedOut && runningRef.current && requestId === requestIdRef.current) {
+            setError("Scan timed out. Try again.");
+            setStatus(scanModeRef.current === "manual" ? "Tap the button below to try again" : "Fit the whole item in the frame");
+          }
         } else if (requestId === requestIdRef.current) {
           setError(cause.message || "Could not analyze this image");
+          setStatus(scanModeRef.current === "manual" ? "Tap the button below to scan again" : "Fit the whole item in the frame");
         }
       } finally {
         window.clearTimeout(timeout);
@@ -217,24 +224,30 @@ export default function Scanner({ packing, model, settings, threshold = 30, imag
     if (!result?.existingItem) return;
     onMarkPacked(result.existingItem.id);
     setResult(null);
-    setStatus(result.existingItem.packed ? `${result.item.name} marked as unpacked` : `${result.item.name} marked packed`);
+    setStatus(idleStatus);
   }
 
   function addResult() {
     if (!result) return;
     onAdd(result.item);
     setResult(null);
-    setStatus(`${result.item.name} added to ${packingRef.current.name}`);
+    setStatus(idleStatus);
   }
 
   function dismissResult() {
     setResult(null);
-    setStatus("Fit the whole item in the frame");
+    setStatus(idleStatus);
   }
 
   function requestScan() {
     forceScanRef.current = true;
     setStatus("Scanning current frame…");
+  }
+
+  function changeScanMode(mode) {
+    scanModeRef.current = mode;
+    setScanMode(mode);
+    if (!busyRef.current && !result) setStatus(mode === "manual" ? "Tap the button below to scan" : "Fit the whole item in the frame");
   }
 
   return (
@@ -285,8 +298,8 @@ export default function Scanner({ packing, model, settings, threshold = 30, imag
           )}
           <div className="scanner-controls">
             <div className="scan-mode-toggle" role="group" aria-label="Scanning mode">
-              <button className={scanMode === "automatic" ? "active" : ""} aria-pressed={scanMode === "automatic"} onClick={() => setScanMode("automatic")}>Automatic</button>
-              <button className={scanMode === "manual" ? "active" : ""} aria-pressed={scanMode === "manual"} onClick={() => setScanMode("manual")}>Manual</button>
+              <button className={scanMode === "automatic" ? "active" : ""} aria-pressed={scanMode === "automatic"} onClick={() => changeScanMode("automatic")}>Automatic</button>
+              <button className={scanMode === "manual" ? "active" : ""} aria-pressed={scanMode === "manual"} onClick={() => changeScanMode("manual")}>Manual</button>
             </div>
             <button className="shutter-button" aria-label="Scan current frame" onClick={requestScan}><span /></button>
             <div className="scanner-small-label">{scanMode === "automatic" ? "Scans when the view changes" : "Tap the button to scan"}</div>
