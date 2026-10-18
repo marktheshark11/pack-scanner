@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { Camera, CalendarDays, ChevronRight, LockKeyhole, LockKeyholeOpen, MoreHorizontal, Plus } from "lucide-react";
 import Scanner from "./Scanner.jsx";
 import SettingsPanel from "./SettingsPanel.jsx";
@@ -38,6 +38,30 @@ function dateRange(start, end) {
 
 function countItems(packings) {
   return packings.reduce((sum, packing) => sum + packing.items.length, 0);
+}
+
+function groupTripsByDate(trips) {
+  const now = new Date();
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  const groups = [
+    { key: "current", label: "Current trips", trips: [] },
+    { key: "coming", label: "Coming trips", trips: [] },
+    { key: "previous", label: "Previous trips", trips: [] },
+  ];
+
+  for (const trip of trips) {
+    const group = trip.endDate && trip.endDate < today
+      ? groups[2]
+      : trip.startDate && trip.startDate > today
+        ? groups[1]
+        : groups[0];
+    group.trips.push(trip);
+  }
+
+  groups[0].trips.sort((a, b) => (a.startDate || a.endDate || "9999").localeCompare(b.startDate || b.endDate || "9999"));
+  groups[1].trips.sort((a, b) => (a.startDate || a.endDate || "9999").localeCompare(b.startDate || b.endDate || "9999"));
+  groups[2].trips.sort((a, b) => (a.endDate || a.startDate || "").localeCompare(b.endDate || b.startDate || ""));
+  return groups;
 }
 
 function App() {
@@ -243,6 +267,25 @@ function App() {
     setItemDialog(null);
   }
 
+  function moveItemFromDialog(targetPackingId) {
+    if (!itemDialog || itemDialog.mode !== "edit") return;
+    const sourcePacking = activeTrip?.packings.find((packing) => packing.id === itemDialog.packingId);
+    const targetPacking = activeTrip?.packings.find((packing) => packing.id === targetPackingId);
+    const item = sourcePacking?.items.find((entry) => entry.id === itemDialog.itemId);
+    if (!sourcePacking || !targetPacking || !item || sourcePacking.locked || targetPacking.locked) return;
+    updateTrip(activeTrip.id, (trip) => ({
+      ...trip,
+      packings: trip.packings.map((packing) => packing.id === sourcePacking.id
+        ? { ...packing, items: packing.items.filter((entry) => entry.id !== item.id) }
+        : packing.id === targetPacking.id
+          ? { ...packing, items: [...packing.items, item] }
+          : packing),
+    }));
+    setExpanded(targetPacking.id);
+    setItemDialog(null);
+    setToast(`${item.name} moved to ${targetPacking.name}`);
+  }
+
   const title = useMemo(() => {
     if (page.name === "trips") return "Trips";
     if (page.name === "settings") return "Settings";
@@ -250,7 +293,7 @@ function App() {
   }, [page.name]);
 
   if (page.name === "scan" && activeTrip && activePacking) {
-    return <Scanner packing={activePacking} locked={activePacking.locked === true} model={model} settings={settings} threshold={Number(settings.threshold) || 30} imageWidth={Number(settings.imageWidth) || 640} onModelChange={setModel} onSettingsChange={setSettings} onAdd={(item) => addItem(activePacking.id, item)} onMarkPacked={(itemId) => toggleItem(activePacking.id, itemId)} onClose={() => setPage({ name: "trip", tripId: activeTrip.id })} />;
+    return <Scanner packing={activePacking} packings={activeTrip.packings} onPackingChange={(packingId) => { setExpanded(packingId); setPage((current) => ({ ...current, packingId })); }} locked={activePacking.locked === true} model={model} settings={settings} threshold={Number(settings.threshold) || 30} imageWidth={Number(settings.imageWidth) || 640} onModelChange={setModel} onSettingsChange={setSettings} onAdd={(item) => addItem(activePacking.id, item)} onMarkPacked={(itemId) => toggleItem(activePacking.id, itemId)} onClose={() => setPage({ name: "trip", tripId: activeTrip.id })} />;
   }
 
   return (
@@ -274,7 +317,9 @@ function App() {
           {trips.length === 0 ? (
             <div className="empty-state"><div className="empty-illustration">✈</div><h3>Your next trip starts here</h3><p>Add a destination, then organize what you’ll pack in each bag.</p><small>Tap + to plan your first trip</small></div>
           ) : (
-            <div className="trip-list">{trips.map((trip) => {
+            <div className="trip-groups">{groupTripsByDate(trips).filter((group) => group.trips.length > 0).map((group) => <section className="trip-group" key={group.key}>
+              <h2 className="trip-group-heading">{group.label}</h2>
+              <div className="trip-list">{group.trips.map((trip) => {
               const total = countItems(trip.packings);
               const openTrip = () => { setExpanded(trip.packings[0]?.id || null); setPage({ name: "trip", tripId: trip.id }); };
               return <article className="trip-card" key={trip.id}>
@@ -288,7 +333,8 @@ function App() {
                   <button className="trip-open-button" aria-label={`Open ${trip.destination}`} onClick={openTrip}><ChevronRight size={19} /></button>
                 </div>
               </article>;
-            })}</div>
+              })}</div>
+            </section>)}</div>
           )}
           <button className="button button-outline full-width add-trip-bottom" onClick={() => setTripCreateOpen(true)}>＋ &nbsp;Add trip</button>
         </section>
@@ -317,7 +363,9 @@ function App() {
           ) : (() => {
             const packing = activePacking;
             const done = packing.items.filter((item) => item.packed).length;
-            const visibleItems = packing.items.filter((item) => item.name.toLowerCase().includes(query.toLowerCase()));
+            const visibleItems = packing.items
+              .filter((item) => item.name.toLowerCase().includes(query.toLowerCase()))
+              .sort((a, b) => Number(a.packed) - Number(b.packed));
             return <>
               <section className="packing-content" role="tabpanel" aria-label={`${packing.name} items`}>
                 <div className="packing-content-heading">
@@ -327,14 +375,20 @@ function App() {
                 </div>
                 <span className="progress-track"><span style={{ width: `${packing.items.length ? done / packing.items.length * 100 : 0}%` }} /></span>
                 <div className="packing-expanded">
-                  <div className="item-tools"><b>Items</b><button className="button button-outline add-item-top-button" disabled={packing.locked} title={packing.locked ? "Unlock this packing to add items" : "Add item manually"} onClick={() => openAddDialog(packing.id)}>＋ &nbsp;Add item manually</button></div>
+                  <div className="item-tools"><b>Items</b></div>
                   <label className="search-box"><span>⌕</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search items…" /></label>
-                  {visibleItems.length === 0 ? <p className="empty-items">{packing.items.length ? "No matching items." : "No items yet. Add one or scan an item."}</p> : <div className="items-list">{visibleItems.map((item) => <div className="item-row" key={item.id}>
-                    <span className="item-icon"><ItemIcon name={item.name} category={item.category} iconKey={item.iconKey} size={18} /></span><span className={`item-name ${item.packed ? "item-packed" : ""}`}>{item.name}</span><button className="item-remove" aria-label={packing.locked ? "Editing unavailable while packing is locked" : `Edit ${item.name}`} title={packing.locked ? "Unlock this packing to edit items" : `Edit ${item.name}`} disabled={packing.locked} onClick={() => openEditDialog(packing.id, item)}>···</button><button className={`check-box ${item.packed ? "checked" : ""}`} aria-label={item.packed ? `Unpack ${item.name}` : `Mark ${item.name} packed`} onClick={() => toggleItem(packing.id, item.id)}>{item.packed ? "✓" : ""}</button>
-                  </div>)}</div>}
+                  {visibleItems.length === 0 ? <p className="empty-items">{packing.items.length ? "No matching items." : "No items yet. Add one or scan an item."}</p> : <div className="items-list">{visibleItems.map((item, index) => <Fragment key={item.id}>
+                    {item.packed && (index === 0 || !visibleItems[index - 1].packed) && <div className="items-subheader">Packed</div>}
+                    <div className="item-row">
+                      <span className="item-icon"><ItemIcon name={item.name} category={item.category} iconKey={item.iconKey} size={18} /></span><span className={`item-name ${item.packed ? "item-packed" : ""}`}>{item.name}</span><button className="item-remove" aria-label={packing.locked ? "Editing unavailable while packing is locked" : `Edit ${item.name}`} title={packing.locked ? "Unlock this packing to edit items" : `Edit ${item.name}`} disabled={packing.locked} onClick={() => openEditDialog(packing.id, item)}>···</button><button className={`check-box ${item.packed ? "checked" : ""}`} aria-label={item.packed ? `Unpack ${item.name}` : `Mark ${item.name} packed`} onClick={() => toggleItem(packing.id, item.id)}>{item.packed ? "✓" : ""}</button>
+                    </div>
+                  </Fragment>)}</div>}
                 </div>
               </section>
-              <button className="button button-primary full-width page-scan-button" onClick={() => setPage({ name: "scan", tripId: activeTrip.id, packingId: packing.id })}><Camera size={17} /> Scan item for {packing.name}</button>
+              <div className="packing-page-actions">
+                <button className="button button-outline" disabled={packing.locked} title={packing.locked ? "Unlock this packing to add items" : "Add item manually"} onClick={() => openAddDialog(packing.id)}>＋ &nbsp;Add item manually</button>
+                <button className="button button-primary page-scan-button" onClick={() => setPage({ name: "scan", tripId: activeTrip.id, packingId: packing.id })}><Camera size={17} /> Scan item</button>
+              </div>
             </>;
           })()}
         </section>
@@ -343,7 +397,7 @@ function App() {
       {packingCreateOpen && activeTrip && <PackingCreateDialog trip={activeTrip} onSave={createPacking} onClose={() => setPackingCreateOpen(false)} />}
       {packingDialog && activeTrip && <PackingEditDialog name={packingName} icon={packingIcon} onNameChange={setPackingName} onIconChange={setPackingIcon} onSave={savePackingEdit} onDelete={() => { const packing = activeTrip.packings.find((entry) => entry.id === packingDialog); setPackingDialog(null); if (packing) setDeleteTarget(packing); }} onClose={() => setPackingDialog(null)} />}
       {deleteTarget && <PackingDeleteDialog packing={deleteTarget} tripName={activeTrip?.destination} onConfirm={confirmDeletePacking} onClose={() => setDeleteTarget(null)} />}
-      {itemDialog && activeTrip && <ItemDialog mode={itemDialog.mode} item={activeTrip.packings.find((packing) => packing.id === itemDialog.packingId)?.items.find((item) => item.id === itemDialog.itemId)} packing={activeTrip.packings.find((packing) => packing.id === itemDialog.packingId)} name={dialogName} onNameChange={setDialogName} onSave={saveItemDialog} onTogglePacked={toggleItemFromDialog} onRemove={removeItemFromDialog} onClose={() => setItemDialog(null)} />}
+      {itemDialog && activeTrip && <ItemDialog mode={itemDialog.mode} item={activeTrip.packings.find((packing) => packing.id === itemDialog.packingId)?.items.find((item) => item.id === itemDialog.itemId)} packing={activeTrip.packings.find((packing) => packing.id === itemDialog.packingId)} packings={activeTrip.packings} name={dialogName} onNameChange={setDialogName} onSave={saveItemDialog} onTogglePacked={toggleItemFromDialog} onRemove={removeItemFromDialog} onMove={moveItemFromDialog} onClose={() => setItemDialog(null)} />}
       {toast && <div className="toast" role="status">✓ &nbsp;{toast}</div>}
     </main>
   );
@@ -503,7 +557,9 @@ function PackingDeleteDialog({ packing, tripName, onConfirm, onClose }) {
   </div>;
 }
 
-function ItemDialog({ mode, item, packing, name, onNameChange, onSave, onTogglePacked, onRemove, onClose }) {
+function ItemDialog({ mode, item, packing, packings, name, onNameChange, onSave, onTogglePacked, onRemove, onMove, onClose }) {
+  const otherPackings = packings.filter((entry) => entry.id !== packing?.id);
+  const [targetPackingId, setTargetPackingId] = useState(() => otherPackings.find((entry) => !entry.locked)?.id || "");
   useEffect(() => {
     const onKeyDown = (event) => { if (event.key === "Escape") onClose(); };
     window.addEventListener("keydown", onKeyDown);
@@ -521,6 +577,13 @@ function ItemDialog({ mode, item, packing, name, onNameChange, onSave, onToggleP
       <button type="submit" className="button button-primary dialog-save">Save</button>
       {editing && <>
         <button type="button" className="button button-outline dialog-toggle" onClick={onTogglePacked}>{item?.packed ? "Mark as unpacked" : "Mark as packed"}</button>
+        {otherPackings.length > 0 && <div className="item-move-controls">
+          <label className="dialog-field">Move to packing<select value={targetPackingId} onChange={(event) => setTargetPackingId(event.target.value)}>
+            <option value="" disabled>Choose a packing</option>
+            {otherPackings.map((entry) => <option key={entry.id} value={entry.id} disabled={entry.locked}>{entry.name}{entry.locked ? " (locked)" : ""}</option>)}
+          </select></label>
+          <button type="button" className="button button-outline" disabled={!targetPackingId || otherPackings.find((entry) => entry.id === targetPackingId)?.locked} onClick={() => onMove(targetPackingId)}>Move</button>
+        </div>}
         <button type="button" className="dialog-remove" onClick={onRemove}><span aria-hidden="true">♲</span> Remove from packing</button>
       </>}
     </form>

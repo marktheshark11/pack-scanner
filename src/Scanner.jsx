@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { ChevronDown, List } from "lucide-react";
 import { CATEGORIES } from "./constants.js";
 import SettingsPanel from "./SettingsPanel.jsx";
 import { ItemIcon, resolveItemIcon } from "./ItemIcon.jsx";
@@ -25,7 +26,7 @@ function cleanText(value) {
   return String(value || "").trim();
 }
 
-export default function Scanner({ packing, locked = false, model, settings, threshold = 30, imageWidth = 640, onModelChange, onSettingsChange, onAdd, onMarkPacked, onClose }) {
+export default function Scanner({ packing, packings = [packing], onPackingChange, locked = false, model, settings, threshold = 30, imageWidth = 640, onModelChange, onSettingsChange, onAdd, onMarkPacked, onClose }) {
   const videoRef = useRef(null);
   const captureRef = useRef(null);
   const thumbRef = useRef(null);
@@ -39,6 +40,7 @@ export default function Scanner({ packing, locked = false, model, settings, thre
   const requestIdRef = useRef(0);
   const timerRef = useRef(null);
   const packingRef = useRef(packing);
+  const previousPackingIdRef = useRef(packing.id);
   const modelRef = useRef(model);
 
   const [status, setStatus] = useState("Starting camera…");
@@ -49,6 +51,7 @@ export default function Scanner({ packing, locked = false, model, settings, thre
   const [torchAvailable, setTorchAvailable] = useState(false);
   const [busy, setBusy] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showPackingList, setShowPackingList] = useState(false);
   const [scanMode, setScanMode] = useState(() => localStorage.getItem("pack-scanner-scan-mode") === "automatic" ? "automatic" : "manual");
   const scanModeRef = useRef(scanMode);
   const idleStatus = scanMode === "manual" ? "Tap the button below to scan" : "Fit the whole item in the frame";
@@ -60,11 +63,30 @@ export default function Scanner({ packing, locked = false, model, settings, thre
 
   useEffect(() => {
     packingRef.current = packing;
+    if (previousPackingIdRef.current !== packing.id) {
+      previousPackingIdRef.current = packing.id;
+      controllerRef.current?.abort();
+      requestIdRef.current += 1;
+      busyRef.current = false;
+      forceScanRef.current = false;
+      lastScannedThumbRef.current = null;
+      setBusy(false);
+      setResult(null);
+      setError("");
+      setStatus(scanModeRef.current === "manual" ? "Tap the button below to scan" : "Fit the whole item in the frame");
+    }
   }, [packing]);
 
   useEffect(() => {
     modelRef.current = model;
   }, [model]);
+
+  useEffect(() => {
+    if (!showPackingList) return undefined;
+    const onKeyDown = (event) => { if (event.key === "Escape") setShowPackingList(false); };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [showPackingList]);
 
   const stop = useCallback(() => {
     runningRef.current = false;
@@ -268,12 +290,21 @@ export default function Scanner({ packing, locked = false, model, settings, thre
       <div className="scanner-overlay">
         <header className="scanner-header">
           <button className="scanner-icon-button" onClick={() => { stop(); onClose(); }} aria-label="Close scanner">×</button>
-          <div><span className="scanner-title">Scan item</span><small>{packing.icon} {packing.name}</small></div>
+          <div className="scanner-packing-controls">
+            <label className="scanner-packing-select">
+              <span>{packing.icon}</span>
+              <select aria-label="Packing to scan into" value={packing.id} onChange={(event) => onPackingChange?.(event.target.value)}>
+                {packings.map((entry) => <option key={entry.id} value={entry.id}>{entry.name}</option>)}
+              </select>
+              <ChevronDown size={16} aria-hidden="true" />
+            </label>
+          </div>
           <div className="scanner-header-actions">
             <button className={`scanner-icon-button flashlight-button ${torch ? "flashlight-on" : ""}`} disabled={!torchAvailable} onClick={toggleTorch} aria-label={torch ? "Turn flashlight off" : "Turn flashlight on"} title={torchAvailable ? "Flashlight" : "Flashlight unavailable on this camera"}>🔦</button>
             <button className="scanner-icon-button" onClick={() => setShowSettings(true)} aria-label="Scan settings" title="Scan settings">⚙</button>
           </div>
         </header>
+        <button className="scanner-icon-button scanner-list-fab" onClick={() => setShowPackingList(true)} aria-label={`View ${packing.name} packing list`} title="View packing list"><List size={20} /></button>
 
         <div className="scanner-content">
           <div className={`scan-frame ${busy ? "scan-frame-busy" : ""}`}><i /><i /><i /><i /><div className="scan-target">{result ? <ItemIcon name={result.item.name} category={result.item.category} iconKey={result.item.iconKey} size={76} strokeWidth={1.5} /> : "＋"}</div></div>
@@ -328,6 +359,16 @@ export default function Scanner({ packing, locked = false, model, settings, thre
             <section className="scanner-settings-dialog" role="dialog" aria-modal="true" aria-labelledby="scanner-settings-title">
               <header className="scanner-settings-header"><h2 id="scanner-settings-title">Settings</h2><button className="dialog-close" aria-label="Close settings" onClick={() => setShowSettings(false)}>×</button></header>
               <SettingsPanel model={model} onModelChange={onModelChange} settings={settings} onSettingsChange={onSettingsChange} />
+            </section>
+          </div>
+        )}
+        {showPackingList && (
+          <div className="scanner-list-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setShowPackingList(false); }}>
+            <section className="scanner-list-panel" role="dialog" aria-modal="true" aria-labelledby="scanner-list-title">
+              <header className="scanner-list-header"><div><h2 id="scanner-list-title">{packing.name}</h2><small>{packing.items.filter((item) => item.packed).length} / {packing.items.length} packed</small></div><button className="dialog-close" aria-label="Close packing list" onClick={() => setShowPackingList(false)}>×</button></header>
+              {packing.items.length === 0 ? <p className="scanner-list-empty">No items in this packing yet.</p> : <div className="scanner-list-items">{[...packing.items].sort((a, b) => Number(a.packed) - Number(b.packed)).map((item) => <div className="scanner-list-item" key={item.id}>
+                <span className="item-icon"><ItemIcon name={item.name} category={item.category} iconKey={item.iconKey} size={18} /></span><span className={item.packed ? "item-packed" : ""}>{item.name}</span><button className={`check-box ${item.packed ? "checked" : ""}`} aria-label={item.packed ? `Unpack ${item.name}` : `Mark ${item.name} packed`} onClick={() => onMarkPacked(item.id)}>{item.packed ? "✓" : ""}</button>
+              </div>)}</div>}
             </section>
           </div>
         )}
