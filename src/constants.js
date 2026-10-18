@@ -1,4 +1,4 @@
-export const PACKING_ICONS = ["🧳", "🎒", "👜", "👕"];
+export const PACKING_ICONS = ["🧳", "🎒", "👜", "💼", "🧺", "👝", "🛍️", "🧥", "⛺", "🚲", "🚗", "🛶"];
 
 export const MODELS = [
   "google/gemini-2.5-flash-lite",

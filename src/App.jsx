@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Camera, CalendarDays, ChevronRight, LockKeyhole, LockKeyholeOpen, MoreHorizontal } from "lucide-react";
+import { Camera, CalendarDays, ChevronRight, LockKeyhole, LockKeyholeOpen, MoreHorizontal, Plus } from "lucide-react";
 import Scanner from "./Scanner.jsx";
 import SettingsPanel from "./SettingsPanel.jsx";
 import { ItemIcon, resolveItemIcon } from "./ItemIcon.jsx";
@@ -51,10 +51,12 @@ function App() {
   const [itemDialog, setItemDialog] = useState(null);
   const [dialogName, setDialogName] = useState("");
   const [packingDialog, setPackingDialog] = useState(null);
+  const [packingCreateOpen, setPackingCreateOpen] = useState(false);
   const [packingName, setPackingName] = useState("");
   const [packingIcon, setPackingIcon] = useState(PACKING_ICONS[0]);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [tripDialog, setTripDialog] = useState(null);
+  const [tripCreateOpen, setTripCreateOpen] = useState(false);
   const [tripDeleteTarget, setTripDeleteTarget] = useState(null);
 
   useEffect(() => {
@@ -72,7 +74,7 @@ function App() {
     return () => clearTimeout(timer);
   }, [toast]);
   const activeTrip = trips.find((trip) => trip.id === page.tripId);
-  const activePacking = activeTrip?.packings.find((packing) => packing.id === page.packingId);
+  const activePacking = activeTrip?.packings.find((packing) => packing.id === (page.packingId || expanded)) || activeTrip?.packings[0];
 
   function updateTrip(tripId, update) {
     setTrips((current) => current.map((trip) => trip.id === tripId ? update(trip) : trip));
@@ -82,6 +84,7 @@ function App() {
     const trip = { id: makeId(), ...values, packings: [], createdAt: Date.now() };
     setTrips((current) => [trip, ...current]);
     setPage({ name: "trip", tripId: trip.id });
+    setTripCreateOpen(false);
   }
 
   function editTrip(trip) {
@@ -107,6 +110,7 @@ function App() {
     updateTrip(page.tripId, (trip) => ({ ...trip, packings: [...trip.packings, packing] }));
     setExpanded(packing.id);
     setPage({ name: "trip", tripId: page.tripId });
+    setPackingCreateOpen(false);
   }
 
   function togglePackingLock(packingId) {
@@ -145,7 +149,7 @@ function App() {
     if (!deleteTarget) return;
     const id = deleteTarget.id;
     updateTrip(page.tripId, (trip) => ({ ...trip, packings: trip.packings.filter((packing) => packing.id !== id) }));
-    if (expanded === id) setExpanded(null);
+    if (expanded === id) setExpanded(activeTrip.packings.find((packing) => packing.id !== id)?.id || null);
     setDeleteTarget(null);
     setToast(`${deleteTarget.name} deleted`);
   }
@@ -241,8 +245,6 @@ function App() {
 
   const title = useMemo(() => {
     if (page.name === "trips") return "Trips";
-    if (page.name === "new-trip") return "New trip";
-    if (page.name === "new-packing") return "New packing";
     if (page.name === "settings") return "Settings";
     return "Trip details";
   }, [page.name]);
@@ -257,6 +259,10 @@ function App() {
         {page.name === "trips" ? <>
           <h1>{title}</h1>
           <div className="header-actions"><button className="icon-button" aria-label="Settings" onClick={() => setPage({ name: "settings" })}>⚙</button></div>
+        </> : page.name === "trip" && activeTrip ? <>
+          <button className="icon-button header-back" aria-label="Back" onClick={() => setPage({ name: "trips" })}>‹</button>
+          <div className="trip-header-title"><h1>{activeTrip.destination}</h1><p className="date-line"><span>▦</span>{dateRange(activeTrip.startDate, activeTrip.endDate)}</p></div>
+          <span className="header-balance" />
         </> : <>
           <button className="icon-button header-back" aria-label={page.name === "new-trip" || page.name === "settings" ? "Close" : "Back"} onClick={() => page.name === "new-trip" || page.name === "settings" ? setPage({ name: "trips" }) : page.name === "new-packing" ? setPage({ name: "trip", tripId: page.tripId }) : setPage({ name: "trips" })}>{page.name === "new-trip" || page.name === "new-packing" ? "×" : "‹"}</button>
           <h1>{title}</h1><span className="header-balance" />
@@ -270,7 +276,7 @@ function App() {
           ) : (
             <div className="trip-list">{trips.map((trip) => {
               const total = countItems(trip.packings);
-              const openTrip = () => { setExpanded(null); setPage({ name: "trip", tripId: trip.id }); };
+              const openTrip = () => { setExpanded(trip.packings[0]?.id || null); setPage({ name: "trip", tripId: trip.id }); };
               return <article className="trip-card" key={trip.id}>
                 <button className="trip-card-main" aria-label={`Open trip to ${trip.destination}`} onClick={openTrip}>
                   <div className="trip-card-top"><div className="destination-symbol">⌖</div></div>
@@ -284,11 +290,11 @@ function App() {
               </article>;
             })}</div>
           )}
-          <button className="button button-outline full-width add-trip-bottom" onClick={() => setPage({ name: "new-trip" })}>＋ &nbsp;Add trip</button>
+          <button className="button button-outline full-width add-trip-bottom" onClick={() => setTripCreateOpen(true)}>＋ &nbsp;Add trip</button>
         </section>
       )}
 
-      {page.name === "new-trip" && <TripForm onSave={createTrip} />}
+      {tripCreateOpen && <TripCreateDialog onSave={createTrip} onClose={() => setTripCreateOpen(false)} />}
       {tripDialog && <TripEditDialog trip={tripDialog} onSave={saveTripEdit} onDelete={() => { setTripDeleteTarget(tripDialog); setTripDialog(null); }} onClose={() => setTripDialog(null)} />}
       {tripDeleteTarget && <TripDeleteDialog trip={tripDeleteTarget} onConfirm={confirmDeleteTrip} onClose={() => setTripDeleteTarget(null)} />}
 
@@ -296,43 +302,45 @@ function App() {
 
       {page.name === "trip" && activeTrip && (
         <section className="page-content trip-detail-page">
-          <div className="destination-heading"><div><h2>{activeTrip.destination}</h2><p className="date-line"><span>▦</span>{dateRange(activeTrip.startDate, activeTrip.endDate)}</p></div></div>
-          <div className="section-heading packing-heading"><h3>Packings</h3><span className="muted-count">{activeTrip.packings.length} {activeTrip.packings.length === 1 ? "bag" : "bags"}</span></div>
-          {activeTrip.packings.length === 0 ? (
-            <div className="empty-inline"><span>🧳</span><div><b>No bags yet</b><p>Create a packing list for a suitcase, backpack, or anything else.</p></div></div>
-          ) : <div className="packing-list">
+          <div className="packing-tabs" role="tablist" aria-label="Packings">
             {activeTrip.packings.map((packing) => {
               const done = packing.items.filter((item) => item.packed).length;
-              const isExpanded = expanded === packing.id;
-              const visibleItems = packing.items.filter((item) => item.name.toLowerCase().includes(query.toLowerCase()));
-              return <article className={`packing-card ${isExpanded ? "is-expanded" : ""}`} key={packing.id}>
-                <div className="packing-card-head">
-                  <div className="packing-card-topline">
-                    <button className="packing-card-toggle" onClick={() => { setExpanded(isExpanded ? null : packing.id); setQuery(""); }} aria-expanded={isExpanded}>
-                      <span className="packing-card-main-row"><span className="packing-icon">{packing.icon}</span><span className="packing-summary"><b>{packing.name}</b><small>{done} / {packing.items.length} packed</small></span></span>
-                    </button>
-                    <button className="packing-edit-button" aria-label={`Edit ${packing.name}`} onClick={() => editPacking(packing)}><MoreHorizontal size={18} /></button>
-                    <button className={`packing-lock-button ${packing.locked ? "is-locked" : ""}`} aria-label={packing.locked ? `Unlock ${packing.name}` : `Lock ${packing.name}`} title={packing.locked ? "Unlock packing" : "Lock packing"} aria-pressed={packing.locked === true} onClick={() => togglePackingLock(packing.id)}>{packing.locked ? <LockKeyhole size={15} /> : <LockKeyholeOpen size={15} />}</button>
-                    <button className="packing-scan-shortcut" aria-label={`Scan and add an item to ${packing.name}`} onClick={() => setPage({ name: "scan", tripId: activeTrip.id, packingId: packing.id })}><Camera size={15} strokeWidth={1.8} /><span>Pack</span></button>
-                  </div>
-                  <span className="progress-track"><span style={{ width: `${packing.items.length ? done / packing.items.length * 100 : 0}%` }} /></span>
+              const selected = activePacking?.id === packing.id;
+              return <button key={packing.id} role="tab" aria-selected={selected} className={`packing-tab ${selected ? "is-active" : ""}`} onClick={() => { setExpanded(packing.id); setQuery(""); }}>
+                <span>{packing.name}</span><small>{done}/{packing.items.length}</small>
+              </button>;
+            })}
+          <button className="packing-tab-add" aria-label="Add packing" title="Add packing" onClick={() => setPackingCreateOpen(true)}><Plus size={19} /></button>
+          </div>
+          {!activePacking ? (
+            <div className="empty-inline"><span>🧳</span><div><b>No bags yet</b><p>Create a packing list for a suitcase, backpack, or anything else.</p></div></div>
+          ) : (() => {
+            const packing = activePacking;
+            const done = packing.items.filter((item) => item.packed).length;
+            const visibleItems = packing.items.filter((item) => item.name.toLowerCase().includes(query.toLowerCase()));
+            return <>
+              <section className="packing-content" role="tabpanel" aria-label={`${packing.name} items`}>
+                <div className="packing-content-heading">
+                  <div><span className="packing-icon">{packing.icon}</span><span className="packing-summary"><b>{packing.name}</b><small>{done} / {packing.items.length} packed</small></span></div>
+                  <button className="packing-edit-button" aria-label={`Edit ${packing.name}`} onClick={() => editPacking(packing)}><MoreHorizontal size={18} /></button>
+                  <button className={`packing-lock-button ${packing.locked ? "is-locked" : ""}`} aria-label={packing.locked ? `Unlock ${packing.name}` : `Lock ${packing.name}`} title={packing.locked ? "Unlock packing" : "Lock packing"} aria-pressed={packing.locked === true} onClick={() => togglePackingLock(packing.id)}>{packing.locked ? <LockKeyhole size={15} /> : <LockKeyholeOpen size={15} />}</button>
                 </div>
-                {!isExpanded && packing.items.length > 0 && <button className="packing-preview" aria-label={`Expand ${packing.name} items`} aria-expanded="false" onClick={() => { setExpanded(packing.id); setQuery(""); }}>{packing.items.filter((item) => item.packed).slice(0, 2).map((item) => <span key={item.id}>✓ &nbsp;{item.name}</span>)}{packing.items.length > 2 && <small>+{packing.items.length - 2} more…</small>}</button>}
-                {isExpanded && <div className="packing-expanded">
+                <span className="progress-track"><span style={{ width: `${packing.items.length ? done / packing.items.length * 100 : 0}%` }} /></span>
+                <div className="packing-expanded">
                   <div className="item-tools"><b>Items</b><button className="button button-outline add-item-top-button" disabled={packing.locked} title={packing.locked ? "Unlock this packing to add items" : "Add item manually"} onClick={() => openAddDialog(packing.id)}>＋ &nbsp;Add item manually</button></div>
                   <label className="search-box"><span>⌕</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search items…" /></label>
                   {visibleItems.length === 0 ? <p className="empty-items">{packing.items.length ? "No matching items." : "No items yet. Add one or scan an item."}</p> : <div className="items-list">{visibleItems.map((item) => <div className="item-row" key={item.id}>
-                    <button className={`check-box ${item.packed ? "checked" : ""}`} aria-label={item.packed ? `Unpack ${item.name}` : `Mark ${item.name} packed`} onClick={() => toggleItem(packing.id, item.id)}>{item.packed ? "✓" : ""}</button><span className="item-icon"><ItemIcon name={item.name} category={item.category} iconKey={item.iconKey} size={17} /></span><span className={`item-name ${item.packed ? "item-packed" : ""}`}>{item.name}</span><button className="item-remove" aria-label={packing.locked ? "Editing unavailable while packing is locked" : `Edit ${item.name}`} title={packing.locked ? "Unlock this packing to edit items" : `Edit ${item.name}`} disabled={packing.locked} onClick={() => openEditDialog(packing.id, item)}>···</button>
+                    <span className="item-icon"><ItemIcon name={item.name} category={item.category} iconKey={item.iconKey} size={18} /></span><span className={`item-name ${item.packed ? "item-packed" : ""}`}>{item.name}</span><button className="item-remove" aria-label={packing.locked ? "Editing unavailable while packing is locked" : `Edit ${item.name}`} title={packing.locked ? "Unlock this packing to edit items" : `Edit ${item.name}`} disabled={packing.locked} onClick={() => openEditDialog(packing.id, item)}>···</button><button className={`check-box ${item.packed ? "checked" : ""}`} aria-label={item.packed ? `Unpack ${item.name}` : `Mark ${item.name} packed`} onClick={() => toggleItem(packing.id, item.id)}>{item.packed ? "✓" : ""}</button>
                   </div>)}</div>}
-                </div>}
-              </article>;
-            })}
-          </div>}
-          <button className="button button-outline full-width add-packing-bottom" onClick={() => setPage({ name: "new-packing", tripId: activeTrip.id })}>＋ &nbsp;Add packing</button>
+                </div>
+              </section>
+              <button className="button button-primary full-width page-scan-button" onClick={() => setPage({ name: "scan", tripId: activeTrip.id, packingId: packing.id })}><Camera size={17} /> Scan item for {packing.name}</button>
+            </>;
+          })()}
         </section>
       )}
 
-      {page.name === "new-packing" && activeTrip && <PackingForm trip={activeTrip} onSave={createPacking} />}
+      {packingCreateOpen && activeTrip && <PackingCreateDialog trip={activeTrip} onSave={createPacking} onClose={() => setPackingCreateOpen(false)} />}
       {packingDialog && activeTrip && <PackingEditDialog name={packingName} icon={packingIcon} onNameChange={setPackingName} onIconChange={setPackingIcon} onSave={savePackingEdit} onDelete={() => { const packing = activeTrip.packings.find((entry) => entry.id === packingDialog); setPackingDialog(null); if (packing) setDeleteTarget(packing); }} onClose={() => setPackingDialog(null)} />}
       {deleteTarget && <PackingDeleteDialog packing={deleteTarget} tripName={activeTrip?.destination} onConfirm={confirmDeletePacking} onClose={() => setDeleteTarget(null)} />}
       {itemDialog && activeTrip && <ItemDialog mode={itemDialog.mode} item={activeTrip.packings.find((packing) => packing.id === itemDialog.packingId)?.items.find((item) => item.id === itemDialog.itemId)} packing={activeTrip.packings.find((packing) => packing.id === itemDialog.packingId)} name={dialogName} onNameChange={setDialogName} onSave={saveItemDialog} onTogglePacked={toggleItemFromDialog} onRemove={removeItemFromDialog} onClose={() => setItemDialog(null)} />}
@@ -343,41 +351,61 @@ function App() {
 
 export default App;
 
-function TripForm({ onSave }) {
+function TripCreateDialog({ onSave, onClose }) {
   const [destination, setDestination] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    const onKeyDown = (event) => { if (event.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [onClose]);
+
   function submit(event) {
     event.preventDefault();
     if (!destination.trim()) return setError("Add a destination to continue.");
     if (startDate && endDate && endDate < startDate) return setError("End date must be after the start date.");
     onSave({ destination: destination.trim(), startDate, endDate });
   }
-  return <form className="form-page" onSubmit={submit}>
-    <label className="field-label">Destination<input value={destination} onChange={(event) => setDestination(event.target.value)} placeholder="e.g. Spain" /></label>
-    <div className="date-fields"><DateField label="Start date" value={startDate} onChange={setStartDate} /><DateField label="End date" value={endDate} min={startDate || undefined} onChange={setEndDate} /></div>
-    {error && <p className="form-error" role="alert">{error}</p>}
-    <button className="button button-primary form-submit" type="submit">Save trip <span>→</span></button>
-  </form>;
+  return <div className="dialog-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+    <form className="item-dialog trip-create-dialog" role="dialog" aria-modal="true" aria-labelledby="trip-create-title" onSubmit={submit}>
+      <header className="dialog-header"><button type="button" className="dialog-close" aria-label="Close dialog" onClick={onClose}>×</button><h2 id="trip-create-title">Add trip</h2><span /></header>
+      <label className="dialog-field">Destination<input autoFocus required value={destination} onChange={(event) => { setDestination(event.target.value); setError(""); }} placeholder="e.g. Spain" /></label>
+      <DateField className="dialog-field" label="Start date" value={startDate} onChange={(value) => { setStartDate(value); setError(""); }} />
+      <DateField className="dialog-field" label="End date" value={endDate} min={startDate || undefined} onChange={(value) => { setEndDate(value); setError(""); }} />
+      {error && <p className="form-error" role="alert">{error}</p>}
+      <div className="packing-create-actions"><button type="button" className="button button-outline" onClick={onClose}>Cancel</button><button type="submit" className="button button-primary">Save trip</button></div>
+    </form>
+  </div>;
 }
 
-function PackingForm({ trip, onSave }) {
+function PackingCreateDialog({ trip, onSave, onClose }) {
   const [name, setName] = useState("");
   const [icon, setIcon] = useState(PACKING_ICONS[0]);
   const [error, setError] = useState("");
+  useEffect(() => {
+    const onKeyDown = (event) => { if (event.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [onClose]);
+
   function submit(event) {
     event.preventDefault();
     if (!name.trim()) return setError("Give this packing a name.");
     onSave({ name: name.trim(), icon });
   }
-  return <form className="form-page" onSubmit={submit}>
-    <label className="field-label">Trip<input value={trip.destination} readOnly /></label>
-    <label className="field-label">Name<input value={name} onChange={(event) => setName(event.target.value)} placeholder="e.g. Suitcase" /></label>
-    <fieldset className="icon-picker"><legend>Choose an icon</legend><div>{PACKING_ICONS.map((option) => <button type="button" key={option} className={icon === option ? "selected" : ""} aria-pressed={icon === option} onClick={() => setIcon(option)}>{option}</button>)}</div></fieldset>
-    {error && <p className="form-error" role="alert">{error}</p>}
-    <button className="button button-primary form-submit" type="submit">Save packing <span>→</span></button>
-  </form>;
+  return <div className="dialog-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+    <form className="item-dialog packing-create-dialog" role="dialog" aria-modal="true" aria-labelledby="packing-create-title" onSubmit={submit}>
+      <header className="dialog-header"><button type="button" className="dialog-close" aria-label="Close dialog" onClick={onClose}>×</button><h2 id="packing-create-title">Add packing</h2><span /></header>
+      <p className="dialog-packing-name">For {trip.destination}</p>
+      <label className="dialog-field">Packing name<input autoFocus required value={name} onChange={(event) => { setName(event.target.value); setError(""); }} placeholder="e.g. Suitcase" /></label>
+      <fieldset className="icon-picker"><legend>Choose an icon</legend><div>{PACKING_ICONS.map((option) => <button type="button" key={option} className={icon === option ? "selected" : ""} aria-label={`Packing icon ${option}`} aria-pressed={icon === option} onClick={() => setIcon(option)}>{option}</button>)}</div></fieldset>
+      {error && <p className="form-error" role="alert">{error}</p>}
+      <div className="packing-create-actions"><button type="button" className="button button-outline" onClick={onClose}>Cancel</button><button type="submit" className="button button-primary">Save packing</button></div>
+    </form>
+  </div>;
 }
 
 function DateField({ label, value, min, onChange, className = "field-label" }) {
