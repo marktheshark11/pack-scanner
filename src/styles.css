@@ -191,7 +191,7 @@ button:disabled { cursor: not-allowed; opacity: .58; }
 .dialog-field input::placeholder { color: #9aa48e; }
 .dialog-save, .dialog-toggle { width: 100%; min-height: 38px; border-radius: 5px; font-size: 9px; }
 .dialog-toggle { margin-top: 7px; }
-.dialog-remove { align-self: center; display: inline-flex; align-items: center; gap: 6px; min-height: 35px; margin-top: 3px; padding: 0 10px; border: 0; background: transparent; color: #c45e54; font-size: 9px; cursor: pointer; }
+.dialog-remove { width: 100%; min-height: 38px; margin-top: 9px; border-radius: 5px; font-size: 9px; }
 .packing-edit-dialog { gap: 12px; }
 .packing-edit-dialog .dialog-field { margin-bottom: 0; }
 .packing-edit-dialog .icon-picker { margin: 1px 0 0; }

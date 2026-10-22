@@ -510,7 +510,7 @@ function TripEditDialog({ trip, onSave, onDelete, onClose }) {
       <DateField className="dialog-field" label="End date" value={endDate} min={startDate || undefined} onChange={setEndDate} />
       {error && <p className="form-error" role="alert">{error}</p>}
       <button type="submit" className="button button-primary dialog-save">Save changes</button>
-      <button type="button" className="dialog-remove" onClick={onDelete}><span aria-hidden="true">♲</span> Delete trip</button>
+      <button type="button" className="button button-danger dialog-remove" onClick={onDelete}><span aria-hidden="true">♲</span> Delete trip</button>
     </form>
   </div>;
 }
@@ -544,7 +544,7 @@ function PackingEditDialog({ name, icon, onNameChange, onIconChange, onSave, onD
       <label className="dialog-field">Packing name<input required value={name} onChange={(event) => onNameChange(event.target.value)} /></label>
       <fieldset className="icon-picker"><legend>Icon</legend><div>{PACKING_ICONS.map((option) => <button type="button" key={option} className={icon === option ? "selected" : ""} aria-pressed={icon === option} onClick={() => onIconChange(option)}>{option}</button>)}</div></fieldset>
       <button type="submit" className="button button-primary dialog-save">Save changes</button>
-      <button type="button" className="dialog-remove" onClick={onDelete}><span aria-hidden="true">♲</span> Delete packing</button>
+      <button type="button" className="button button-danger dialog-remove" onClick={onDelete}><span aria-hidden="true">♲</span> Delete packing</button>
     </form>
   </div>;
 }
@@ -592,7 +592,7 @@ function ItemDialog({ mode, item, packing, packings, name, onNameChange, onSave,
           </select></label>
           <button type="button" className="button button-outline" disabled={!targetPackingId || otherPackings.find((entry) => entry.id === targetPackingId)?.locked} onClick={() => onMove(targetPackingId)}>Move</button>
         </div>}
-        <button type="button" className="dialog-remove" onClick={onRemove}><span aria-hidden="true">♲</span> Remove from packing</button>
+        <button type="button" className="button button-danger dialog-remove" onClick={onRemove}><span aria-hidden="true">♲</span> Delete from packing</button>
       </>}
     </form>
   </div>;
