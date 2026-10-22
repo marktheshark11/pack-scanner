@@ -356,15 +356,17 @@ function App() {
 
       {page.name === "trip" && activeTrip && (
         <section className="page-content trip-detail-page">
-          <div className="packing-tabs" role="tablist" aria-label="Packings">
-            {activeTrip.packings.map((packing) => {
-              const done = packing.items.filter((item) => item.packed).length;
-              const selected = activePacking?.id === packing.id;
-              return <button key={packing.id} role="tab" aria-selected={selected} className={`packing-tab ${selected ? "is-active" : ""}`} onClick={() => { setExpanded(packing.id); setQuery(""); setSearchOpen(false); }}>
-                <span>{packing.name}</span><small>{done}/{packing.items.length}</small>
-              </button>;
-            })}
-          <button className="packing-tab-add" aria-label="Add packing" title="Add packing" onClick={() => setPackingCreateOpen(true)}><Plus size={19} /></button>
+          <div className="packing-tabs-row">
+            <div className="packing-tabs" role="tablist" aria-label="Packings">
+              {activeTrip.packings.map((packing) => {
+                const done = packing.items.filter((item) => item.packed).length;
+                const selected = activePacking?.id === packing.id;
+                return <button key={packing.id} role="tab" aria-selected={selected} className={`packing-tab ${selected ? "is-active" : ""}`} onClick={() => { setExpanded(packing.id); setQuery(""); setSearchOpen(false); }}>
+                  <span>{packing.name}</span><small>{done}/{packing.items.length}</small>
+                </button>;
+              })}
+            </div>
+            <button className="packing-tab-add" onClick={() => setPackingCreateOpen(true)}><Plus size={16} aria-hidden="true" />Add packing</button>
           </div>
           {!activePacking ? (
             <div className="empty-inline"><span>🧳</span><div><b>No bags yet</b><p>Create a packing list for a suitcase, backpack, or anything else.</p></div></div>

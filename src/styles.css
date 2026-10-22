@@ -94,12 +94,13 @@ button:disabled { cursor: not-allowed; opacity: .58; }
 .empty-inline > span { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 9px; background: var(--tint); font-size: 17px; }
 .empty-inline b { font-size: 11px; }
 .empty-inline p { margin: 3px 0 0; color: var(--muted); font-size: 10px; line-height: 1.5; }
-.packing-tabs { display: flex; align-items: center; gap: 7px; width: 100%; overflow-x: auto; padding: 4px 0 5px; scrollbar-width: none; }
+.packing-tabs-row { display: flex; align-items: center; gap: 8px; width: 100%; min-width: 0; }
+.packing-tabs { display: flex; align-items: center; gap: 7px; flex: 1 1 auto; min-width: 0; overflow-x: auto; padding: 4px 0 5px; scrollbar-width: none; }
 .packing-tab { min-height: 40px; flex: 0 0 auto; display: inline-flex; align-items: center; gap: 5px; padding: 0 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: #536448; font-size: 11px; font-weight: 600; white-space: nowrap; cursor: pointer; }
 .packing-tab.is-active { border-color: transparent; background: #eaf0e7; color: #254b39; }
 .packing-tab small { font-size: 10px; font-weight: 500; }
-.packing-tab-add { width: 40px; height: 40px; flex: 0 0 40px; display: grid; place-items: center; padding: 0; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: #327358; cursor: pointer; }
-.packing-tab-add:hover { background: var(--tint); }
+.packing-tab-add { min-height: 40px; flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; gap: 5px; padding: 0 12px; border: 1px solid #b9cbb5; border-radius: 12px; background: #eaf0e7; color: #254b39; font-size: 11px; font-weight: 600; white-space: nowrap; cursor: pointer; }
+.packing-tab-add:hover { border-color: #8fa78a; background: #dfe9dc; }
 .packing-content { min-height: 0; flex: 1 1 0; overflow-y: auto; padding: 10px 11px 8px; border: 1px solid #e5e9e1; border-radius: 11px; background: #fff; scrollbar-width: none; }
 .packing-content-heading { display: flex; align-items: center; gap: 6px; }
 .packing-content-heading > div { min-width: 0; flex: 1; display: flex; align-items: center; gap: 10px; }
