@@ -144,7 +144,9 @@ function App() {
       ...trip,
       packings: trip.packings.map((entry) => entry.id === packingId ? { ...entry, locked: !entry.locked } : entry),
     }));
-    setToast(packing.locked ? `${packing.name} unlocked` : `${packing.name} locked`);
+    setToast(packing.locked
+      ? `${packing.name} unlocked`
+      : `${packing.name} is now locked. You can pack or unpack items, but can’t add or edit items.`);
   }
 
   function isPackingLocked(packingId) {
@@ -385,13 +387,13 @@ function App() {
                   {visibleItems.length === 0 ? <p className="empty-items">{packing.items.length ? "No matching items." : "No items yet. Add one or scan an item."}</p> : <div className="items-list">{visibleItems.map((item, index) => <Fragment key={item.id}>
                     {item.packed && (index === 0 || !visibleItems[index - 1].packed) && <div className="items-subheader">Packed</div>}
                     <div className="item-row">
-                      <span className="item-icon"><ItemIcon name={item.name} category={item.category} iconKey={item.iconKey} size={18} /></span><span className={`item-name ${item.packed ? "item-packed" : ""}`}>{item.name}</span><button className="item-remove" aria-label={packing.locked ? "Editing unavailable while packing is locked" : `Edit ${item.name}`} title={packing.locked ? "Unlock this packing to edit items" : `Edit ${item.name}`} disabled={packing.locked} onClick={() => openEditDialog(packing.id, item)}>···</button><button className={`check-box ${item.packed ? "checked" : ""}`} aria-label={item.packed ? `Unpack ${item.name}` : `Mark ${item.name} packed`} onClick={() => toggleItem(packing.id, item.id)}>{item.packed ? "✓" : ""}</button>
+                       <span className="item-icon"><ItemIcon name={item.name} category={item.category} iconKey={item.iconKey} size={18} /></span><span className={`item-name ${item.packed ? "item-packed" : ""}`}>{item.name}</span><button className="item-remove" aria-label={packing.locked ? "Editing unavailable while packing is locked" : `Edit ${item.name}`} title={packing.locked ? "Unlock this packing to edit items" : `Edit ${item.name}`} onClick={() => packing.locked ? setToast("This packing is locked and can’t be changed") : openEditDialog(packing.id, item)}>···</button><button className={`check-box ${item.packed ? "checked" : ""}`} aria-label={item.packed ? `Unpack ${item.name}` : `Mark ${item.name} packed`} onClick={() => toggleItem(packing.id, item.id)}>{item.packed ? "✓" : ""}</button>
                     </div>
                   </Fragment>)}</div>}
                 </div>
               </section>
               <div className="packing-page-actions">
-                <button className="button button-outline" disabled={packing.locked} title={packing.locked ? "Unlock this packing to add items" : "Add item manually"} onClick={() => openAddDialog(packing.id)}>＋ &nbsp;Add item manually</button>
+                <button className="button button-outline" title={packing.locked ? "Unlock this packing to add items" : "Add item manually"} onClick={() => packing.locked ? setToast("This packing is locked and can’t be changed") : openAddDialog(packing.id)}>＋ &nbsp;Add item manually</button>
                 <button className="button button-primary page-scan-button" onClick={() => setPage({ name: "scan", tripId: activeTrip.id, packingId: packing.id })}><Camera size={17} /> Scan item</button>
               </div>
             </>;
