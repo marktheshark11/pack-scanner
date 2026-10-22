@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
-import { Camera, CalendarDays, ChevronRight, LockKeyhole, LockKeyholeOpen, MoreHorizontal, Plus } from "lucide-react";
+import { Camera, CalendarDays, ChevronRight, LockKeyhole, LockKeyholeOpen, MoreHorizontal, Plus, Search } from "lucide-react";
 import Scanner from "./Scanner.jsx";
 import SettingsPanel from "./SettingsPanel.jsx";
 import { ItemIcon, resolveItemIcon } from "./ItemIcon.jsx";
@@ -72,6 +72,7 @@ function App() {
   const [toast, setToast] = useState("");
   const [expanded, setExpanded] = useState(null);
   const [query, setQuery] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
   const [itemDialog, setItemDialog] = useState(null);
   const [dialogName, setDialogName] = useState("");
   const [packingDialog, setPackingDialog] = useState(null);
@@ -359,7 +360,7 @@ function App() {
             {activeTrip.packings.map((packing) => {
               const done = packing.items.filter((item) => item.packed).length;
               const selected = activePacking?.id === packing.id;
-              return <button key={packing.id} role="tab" aria-selected={selected} className={`packing-tab ${selected ? "is-active" : ""}`} onClick={() => { setExpanded(packing.id); setQuery(""); }}>
+              return <button key={packing.id} role="tab" aria-selected={selected} className={`packing-tab ${selected ? "is-active" : ""}`} onClick={() => { setExpanded(packing.id); setQuery(""); setSearchOpen(false); }}>
                 <span>{packing.name}</span><small>{done}/{packing.items.length}</small>
               </button>;
             })}
@@ -377,13 +378,13 @@ function App() {
               <section className="packing-content" role="tabpanel" aria-label={`${packing.name} items`}>
                 <div className="packing-content-heading">
                   <div><span className="packing-icon">{packing.icon}</span><span className="packing-summary"><b>{packing.name}</b><small>{done} / {packing.items.length} packed</small></span></div>
+                  <button className={`packing-edit-button ${searchOpen ? "is-active" : ""}`} aria-label={searchOpen ? "Close item search" : "Search items"} title={searchOpen ? "Close item search" : "Search items"} aria-expanded={searchOpen} onClick={() => { setSearchOpen((open) => { if (open) setQuery(""); return !open; }); }}><Search size={16} /></button>
                   <button className="packing-edit-button" aria-label={`Edit ${packing.name}`} onClick={() => editPacking(packing)}><MoreHorizontal size={18} /></button>
                   <button className={`packing-lock-button ${packing.locked ? "is-locked" : ""}`} aria-label={packing.locked ? `Unlock ${packing.name}` : `Lock ${packing.name}`} title={packing.locked ? "Unlock packing" : "Lock packing"} aria-pressed={packing.locked === true} onClick={() => togglePackingLock(packing.id)}>{packing.locked ? <LockKeyhole size={15} /> : <LockKeyholeOpen size={15} />}</button>
                 </div>
                 <span className="progress-track"><span style={{ width: `${packing.items.length ? done / packing.items.length * 100 : 0}%` }} /></span>
                 <div className="packing-expanded">
-                  <div className="item-tools"><b>Items</b></div>
-                  <label className="search-box"><span>⌕</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search items…" /></label>
+                  {searchOpen && <label className="search-box"><span>⌕</span><input autoFocus value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search items…" /></label>}
                    {visibleItems.length === 0 ? <p className="empty-items">{packing.items.length ? "No matching items." : "No items yet. Add one or scan an item."}</p> : <div className="items-list">{visibleItems.map((item, index) => <Fragment key={item.id}>
                      {!item.packed && (index === 0 || visibleItems[index - 1].packed) && <div className="items-subheader">Unpacked</div>}
                      {item.packed && (index === 0 || !visibleItems[index - 1].packed) && <div className="items-subheader">Packed</div>}

@@ -105,6 +105,7 @@ button:disabled { cursor: not-allowed; opacity: .58; }
 .packing-content-heading > div { min-width: 0; flex: 1; display: flex; align-items: center; gap: 10px; }
 .packing-edit-button { width: 28px; height: 28px; display: grid; place-items: center; flex: 0 0 auto; padding: 0; border: 1px solid transparent; border-radius: 7px; background: transparent; color: #7b8773; cursor: pointer; }
 .packing-edit-button:hover { border-color: var(--line); background: var(--tint); }
+.packing-edit-button.is-active { border-color: #d8cda8; background: #f7f2e5; color: #817146; }
 .packing-lock-button { width: 28px; height: 28px; display: grid; place-items: center; flex: 0 0 auto; padding: 0; border: 1px solid transparent; border-radius: 7px; background: transparent; color: #718267; cursor: pointer; }
 .packing-lock-button:hover { border-color: var(--line); background: var(--tint); }
 .packing-lock-button.is-locked { border-color: #d8cda8; background: #f7f2e5; color: #817146; }
