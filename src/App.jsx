@@ -384,8 +384,9 @@ function App() {
                 <div className="packing-expanded">
                   <div className="item-tools"><b>Items</b></div>
                   <label className="search-box"><span>⌕</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search items…" /></label>
-                  {visibleItems.length === 0 ? <p className="empty-items">{packing.items.length ? "No matching items." : "No items yet. Add one or scan an item."}</p> : <div className="items-list">{visibleItems.map((item, index) => <Fragment key={item.id}>
-                    {item.packed && (index === 0 || !visibleItems[index - 1].packed) && <div className="items-subheader">Packed</div>}
+                   {visibleItems.length === 0 ? <p className="empty-items">{packing.items.length ? "No matching items." : "No items yet. Add one or scan an item."}</p> : <div className="items-list">{visibleItems.map((item, index) => <Fragment key={item.id}>
+                     {!item.packed && (index === 0 || visibleItems[index - 1].packed) && <div className="items-subheader">Unpacked</div>}
+                     {item.packed && (index === 0 || !visibleItems[index - 1].packed) && <div className="items-subheader">Packed</div>}
                     <div className="item-row">
                        <span className="item-icon"><ItemIcon name={item.name} category={item.category} iconKey={item.iconKey} size={18} /></span><span className={`item-name ${item.packed ? "item-packed" : ""}`}>{item.name}</span><button className="item-remove" aria-label={packing.locked ? "Editing unavailable while packing is locked" : `Edit ${item.name}`} title={packing.locked ? "Unlock this packing to edit items" : `Edit ${item.name}`} onClick={() => packing.locked ? setToast("This packing is locked and can’t be changed") : openEditDialog(packing.id, item)}>···</button><button className={`check-box ${item.packed ? "checked" : ""}`} aria-label={item.packed ? `Unpack ${item.name}` : `Mark ${item.name} packed`} onClick={() => toggleItem(packing.id, item.id)}>{item.packed ? "✓" : ""}</button>
                     </div>
