@@ -193,14 +193,19 @@ function App() {
     setToast(`${item.name} added`);
   }
 
-  function toggleItem(packingId, itemId) {
-    updateTrip(page.tripId, (trip) => ({
+  function setItemPacked(tripId, packingId, itemId, packed) {
+    setTrips((current) => current.map((trip) => trip.id !== tripId ? trip : {
       ...trip,
       packings: trip.packings.map((packing) => packing.id !== packingId ? packing : {
         ...packing,
-        items: packing.items.map((item) => item.id === itemId ? { ...item, packed: !item.packed } : item),
+        items: packing.items.map((item) => item.id === itemId ? { ...item, packed } : item),
       }),
     }));
+  }
+
+  function toggleItem(packingId, itemId) {
+    const item = activeTrip?.packings.find((packing) => packing.id === packingId)?.items.find((entry) => entry.id === itemId);
+    if (item && activeTrip) setItemPacked(activeTrip.id, packingId, itemId, !item.packed);
   }
 
   function removeItem(packingId, itemId) {
@@ -293,7 +298,7 @@ function App() {
   }, [page.name]);
 
   if (page.name === "scan" && activeTrip && activePacking) {
-    return <Scanner packing={activePacking} packings={activeTrip.packings} onPackingChange={(packingId) => { setExpanded(packingId); setPage((current) => ({ ...current, packingId })); }} locked={activePacking.locked === true} model={model} settings={settings} threshold={Number(settings.threshold) || 30} imageWidth={Number(settings.imageWidth) || 640} onModelChange={setModel} onSettingsChange={setSettings} onAdd={(item) => addItem(activePacking.id, item)} onMarkPacked={(itemId) => toggleItem(activePacking.id, itemId)} onClose={() => setPage({ name: "trip", tripId: activeTrip.id })} />;
+    return <Scanner packing={activePacking} packings={activeTrip.packings} onPackingChange={(packingId) => { setExpanded(packingId); setPage((current) => ({ ...current, packingId })); }} locked={activePacking.locked === true} model={model} settings={settings} threshold={Number(settings.threshold) || 30} imageWidth={Number(settings.imageWidth) || 640} onModelChange={setModel} onSettingsChange={setSettings} onAdd={(item) => addItem(activePacking.id, item)} onMarkPacked={(itemId, packed) => setItemPacked(activeTrip.id, activePacking.id, itemId, packed)} onClose={() => setPage({ name: "trip", tripId: activeTrip.id })} />;
   }
 
   return (

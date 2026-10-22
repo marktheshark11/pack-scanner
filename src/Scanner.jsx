@@ -244,9 +244,9 @@ export default function Scanner({ packing, packings = [packing], onPackingChange
     }
   }
 
-  function markExistingPackedState(item = result?.existingItem) {
+  function setExistingPackedState(packed, item = result?.existingItem) {
     if (!item) return;
-    onMarkPacked(item.id);
+    onMarkPacked(item.id, packed);
     setResult(null);
     setStatus(idleStatus);
   }
@@ -327,13 +327,13 @@ export default function Scanner({ packing, packings = [packing], onPackingChange
               <div className="scan-actions">
                 {locked ? (
                   <>
-                    {unpackedMatch && <button className="button button-quiet" onClick={() => markExistingPackedState(unpackedMatch)}>Mark one packed</button>}
-                    {packedMatch && <button className="button button-primary" onClick={() => markExistingPackedState(packedMatch)}>Mark one unpacked</button>}
+                    {unpackedMatch && <button className="button button-quiet" onClick={() => setExistingPackedState(true, unpackedMatch)}>Mark one packed</button>}
+                    {packedMatch && <button className="button button-primary" onClick={() => setExistingPackedState(false, packedMatch)}>Mark one unpacked</button>}
                     {!matchingItems.length && <button className="button button-quiet" onClick={dismissResult}>Dismiss</button>}
                   </>
                 ) : result.existingItem ? (
                   <>
-                    <button className="button button-quiet" onClick={markExistingPackedState}>{result.existingItem.packed ? "Mark as unpacked" : "Mark as packed"}</button>
+                    <button className="button button-quiet" onClick={() => setExistingPackedState(!result.existingItem.packed)}>{result.existingItem.packed ? "Mark as unpacked" : "Mark as packed"}</button>
                     <button className="button button-primary" onClick={addResult}>Add another</button>
                   </>
                 ) : (
@@ -367,7 +367,7 @@ export default function Scanner({ packing, packings = [packing], onPackingChange
             <section className="scanner-list-panel" role="dialog" aria-modal="true" aria-labelledby="scanner-list-title">
               <header className="scanner-list-header"><div><h2 id="scanner-list-title">{packing.name}</h2><small>{packing.items.filter((item) => item.packed).length} / {packing.items.length} packed</small></div><button className="dialog-close" aria-label="Close packing list" onClick={() => setShowPackingList(false)}>×</button></header>
               {packing.items.length === 0 ? <p className="scanner-list-empty">No items in this packing yet.</p> : <div className="scanner-list-items">{[...packing.items].sort((a, b) => Number(a.packed) - Number(b.packed)).map((item) => <div className="scanner-list-item" key={item.id}>
-                <span className="item-icon"><ItemIcon name={item.name} category={item.category} iconKey={item.iconKey} size={18} /></span><span className={item.packed ? "item-packed" : ""}>{item.name}</span><button className={`check-box ${item.packed ? "checked" : ""}`} aria-label={item.packed ? `Unpack ${item.name}` : `Mark ${item.name} packed`} onClick={() => onMarkPacked(item.id)}>{item.packed ? "✓" : ""}</button>
+                <span className="item-icon"><ItemIcon name={item.name} category={item.category} iconKey={item.iconKey} size={18} /></span><span className={item.packed ? "item-packed" : ""}>{item.name}</span><button className={`check-box ${item.packed ? "checked" : ""}`} aria-label={item.packed ? `Unpack ${item.name}` : `Mark ${item.name} packed`} onClick={() => onMarkPacked(item.id, !item.packed)}>{item.packed ? "✓" : ""}</button>
               </div>)}</div>}
             </section>
           </div>
