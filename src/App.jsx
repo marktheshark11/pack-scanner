@@ -95,7 +95,7 @@ function App() {
   }, [settings]);
   useEffect(() => {
     if (!toast) return undefined;
-    const timer = setTimeout(() => setToast(""), 2200);
+    const timer = setTimeout(() => setToast(""), 4500);
     return () => clearTimeout(timer);
   }, [toast]);
   const activeTrip = trips.find((trip) => trip.id === page.tripId);
@@ -193,10 +193,13 @@ function App() {
         items: [...packing.items, { id: makeId(), name: item.name, category: item.category || "Misc & Entertainment", iconKey: item.iconKey || resolveItemIcon(item.name, item.category), packed: true }],
       }),
     }));
-    setToast(`${item.name} added`);
+    const packingName = activeTrip?.packings.find((packing) => packing.id === packingId)?.name || "your packing";
+    setToast(`${item.name} added to ${packingName}. You can now put it in your bag.`);
   }
 
   function setItemPacked(tripId, packingId, itemId, packed) {
+    const packing = trips.find((trip) => trip.id === tripId)?.packings.find((entry) => entry.id === packingId);
+    const item = packing?.items.find((entry) => entry.id === itemId);
     setTrips((current) => current.map((trip) => trip.id !== tripId ? trip : {
       ...trip,
       packings: trip.packings.map((packing) => packing.id !== packingId ? packing : {
@@ -204,6 +207,11 @@ function App() {
         items: packing.items.map((item) => item.id === itemId ? { ...item, packed } : item),
       }),
     }));
+    if (item) {
+      setToast(packed
+        ? `${item.name} marked packed. You can now put it in your bag.`
+        : `${item.name} marked unpacked. You can now remove it from your bag.`);
+    }
   }
 
   function toggleItem(packingId, itemId) {
@@ -238,10 +246,11 @@ function App() {
       ...trip,
       packings: trip.packings.map((packing) => packing.id !== packingId ? packing : {
         ...packing,
-        items: [...packing.items, { id: makeId(), name: cleanName, category: "Misc & Entertainment", iconKey: resolveItemIcon(cleanName), packed: false }],
+        items: [...packing.items, { id: makeId(), name: cleanName, category: "Misc & Entertainment", iconKey: resolveItemIcon(cleanName), packed: true }],
       }),
     }));
-    setToast(`${cleanName} added`);
+    const packingName = activeTrip?.packings.find((packing) => packing.id === packingId)?.name || "your packing";
+    setToast(`${cleanName} added to ${packingName}. You can now put it in your bag.`);
   }
 
   function openAddDialog(packingId) {
@@ -301,7 +310,7 @@ function App() {
   }, [page.name]);
 
   if (page.name === "scan" && activeTrip && activePacking) {
-    return <Scanner packing={activePacking} packings={activeTrip.packings} onPackingChange={(packingId) => { setExpanded(packingId); setPage((current) => ({ ...current, packingId })); }} locked={activePacking.locked === true} model={model} settings={settings} threshold={Number(settings.threshold) || 30} imageWidth={Number(settings.imageWidth) || 640} onModelChange={setModel} onSettingsChange={setSettings} onAdd={(item) => addItem(activePacking.id, item)} onMarkPacked={(itemId, packed) => setItemPacked(activeTrip.id, activePacking.id, itemId, packed)} onClose={() => setPage({ name: "trip", tripId: activeTrip.id })} />;
+    return <Scanner packing={activePacking} packings={activeTrip.packings} toast={toast} onPackingChange={(packingId) => { setExpanded(packingId); setPage((current) => ({ ...current, packingId })); }} locked={activePacking.locked === true} model={model} settings={settings} threshold={Number(settings.threshold) || 30} imageWidth={Number(settings.imageWidth) || 640} onModelChange={setModel} onSettingsChange={setSettings} onAdd={(item) => addItem(activePacking.id, item)} onMarkPacked={(itemId, packed) => setItemPacked(activeTrip.id, activePacking.id, itemId, packed)} onClose={() => setPage({ name: "trip", tripId: activeTrip.id })} />;
   }
 
   return (

@@ -26,7 +26,7 @@ function cleanText(value) {
   return String(value || "").trim();
 }
 
-export default function Scanner({ packing, packings = [packing], onPackingChange, locked = false, model, settings, threshold = 30, imageWidth = 640, onModelChange, onSettingsChange, onAdd, onMarkPacked, onClose }) {
+export default function Scanner({ packing, packings = [packing], toast, onPackingChange, locked = false, model, settings, threshold = 30, imageWidth = 640, onModelChange, onSettingsChange, onAdd, onMarkPacked, onClose }) {
   const videoRef = useRef(null);
   const captureRef = useRef(null);
   const thumbRef = useRef(null);
@@ -372,6 +372,7 @@ export default function Scanner({ packing, packings = [packing], onPackingChange
             </section>
           </div>
         )}
+        {toast && <div className="toast scanner-toast" role="status">{toast}</div>}
       </div>
     </main>
   );
